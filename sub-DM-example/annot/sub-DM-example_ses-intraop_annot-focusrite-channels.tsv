@@ -1,0 +1,5 @@
+focusrite_file_type	channel_id	recording
+.wav	1	recording-directionalmic_physio
+.wav	2	recording-ambientmic_physio
+.wav	3	events
+.wav	4	recording-speaker_stim

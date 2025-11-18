@@ -1,0 +1,169 @@
+% decoding first 
+addpath(genpath('util/mTRF-Toolbox-master/mtrf'))
+
+% if running as example script isolation
+cd('Y:\DBS\groupanalyses\task-lombard\20230524-subctx-lfp-group-PLB'); 
+path_data_tmp = 'Y:\DBS\groupanalyses\task-lombard\20230524-subctx-lfp-group-PLB/data/mTFR-bml-example.mat'; 
+
+ld = load(path_data_tmp); D = ld.D; 
+% if running as part of A04
+% D = datatbl_run.TF{1,1};
+
+fs = 100; 
+
+cfg=[]; cfg.channel={'beh_acoustic_edge_rising'}; % 'audioR_a', acousticspectrum_intensity, envaudio_p
+stim = ft_selectdata(cfg, D); 
+stim_X = (stim.powspctrm); 
+stim_X = permute(stim_X, [4, 1, 2, 3]); 
+% figure; plot(mean(resp_X, 2)); % test we have the right channel
+% figure; plot(stim_X); hold 
+stim_X = reshape(stim_X, [], size(stim_X, 3)); 
+stim_X = normalize(stim_X); 
+
+
+cfg=[]; cfg.channel= cellstr("ecog_L22" + int2str((4:9)')); % cellstr("ecog_L22" + int2str((3:9)'))
+resp = ft_selectdata(cfg, D); 
+resp_X = (resp.powspctrm); 
+resp_X = permute(resp_X, [4, 1, 2, 3]); 
+% figure; plot(mean(resp_X, 2)); % test we have the right channel
+resp_X = reshape(resp_X, [], size(resp_X, 3)); 
+resp_X = normalize(resp_X); 
+% resp_X = mTRFresample(resp_X,fs,fs, 20); 
+% figure; h = imagesc(resp_X); colorbar; set(h, 'AlphaData', ~isnan(resp_X)); caxis([0 15])
+
+rm_idxs = any(ismissing(resp_X), 2) | any(ismissing(stim_X), 2);
+resp_X(rm_idxs, :) = 0;
+stim_X(rm_idxs, :) = 0;
+
+
+% Partition data into training/test sets
+nfold = 5; testTrial = 3;
+[strain,rtrain,stest,rtest] = mTRFpartition(stim_X,resp_X,nfold,testTrial);
+
+
+%% Model hyperparameters
+Dir = -1; % direction of causality
+tmin = 0; % minimum time lag (ms)
+tmax = 250; % maximum time lag (ms)
+lambda = 10.^(-9:2:9); % regularization parameters
+
+% Run efficient cross-validation
+cv = mTRFcrossval(strain,rtrain,fs,Dir,tmin,tmax,lambda,'zeropad',0,'fast',1);
+
+
+% Find optimal regularization value
+[rmax,idx] = max(mean(cv.r));
+
+% Train model
+model = mTRFtrain(strain,rtrain,fs,Dir,tmin,tmax,lambda(idx),'zeropad',0);
+
+% Test model
+[pred, test] = mTRFpredict(stest,rtest,model,'zeropad',0);
+
+% Plot CV accuracy
+figure
+subplot(2,2,1), errorbar(1:numel(lambda),mean(cv.r),std(cv.r)/sqrt(nfold-1),'linewidth',2)
+set(gca,'xtick',1:numel(lambda),'xticklabel',-6:2:6), xlim([0,numel(lambda)+1]), axis square, grid on
+title('CV Accuracy'), xlabel('Regularization (1\times10^\lambda)'), ylabel('Correlation')
+
+% Plot CV error
+subplot(2,2,2), errorbar(1:numel(lambda),mean(cv.err),std(cv.err)/sqrt(nfold-1),'linewidth',2)
+set(gca,'xtick',1:numel(lambda),'xticklabel',-6:2:6), xlim([0,numel(lambda)+1]), axis square, grid on
+title('CV Error'), xlabel('Regularization (1\times10^\lambda)'), ylabel('MSE')
+
+% Plot reconstruction
+subplot(2,2,3), hold on; 
+plot((1:height(stest))/fs,stest(:, end),'linewidth',2, 'DisplayName', 'stim')
+plot((1:height(rtest))/fs,rtest(:, 1),'linewidth',2, 'DisplayName', 'resp')
+plot((1:height(pred))/fs,pred(:, 1)*5,'linewidth',4, 'Color', 'k', 'LineStyle', '--', 'DisplayName', 'resp-pred   '),
+hold off, xlim([0,25])% , axis square, grid on
+title('Reconstruction'), xlabel('Time (s)'), ylabel('Amplitude (a.u.)'), legend()
+% plot((1:length(stest))/fs,stest,'linewidth',2), hold on
+% plot((1:length(pred))/fs,pred,'linewidth',2), hold off, xlim([0,100])% , axis square, grid on
+% title('Reconstruction'), xlabel('Time (s)'), ylabel('Amplitude (a.u.)'), legend('Orig','Pred')
+
+% Plot test accuracy
+subplot(2,2,4), bar(1,rmax), hold on, bar(2,test.r), hold off
+set(gca,'xtick',1:2,'xticklabel',{'Val.','Test'}), % axis square, grid on
+title('Model Performance'), xlabel('Dataset'), ylabel('Correlation')
+%% try encoding rather than decoding 
+% Load example speech dataset
+% load('util/mTRF-Toolbox-master/data/speech_data.mat','stim','resp','fs','factor');       
+% % Estimate STRF model weights
+% model = mTRFtrain(stim,resp*factor,fs,1,-100,400,0.1);
+
+tmin = -100; 
+tmax = 600; 
+lam = 1000; 
+model = mTRFtrain(strain, rtrain, fs, 1, tmin, tmax, lam);
+% Test model
+[pred, test] = mTRFpredict(stest,rtest,model,'zeropad',0);
+
+
+% Plot STRF
+figure
+subplot(2,2,1), mTRFplot(model,'mtrf', 'all', 2, [tmin + 50, tmax-50]);
+title('Speech STRF'), ylabel('Frequency band'), xlabel('')
+
+% Plot GFP
+subplot(2,2,2), mTRFplot(model,'mgfp','all', 1, [tmin + 50, tmax-50]);
+title('Global Field Power'), xlabel('')
+
+% Plot TRF
+subplot(2,2,3), 
+% figure; 
+mTRFplot(model,'trf', 2, 'all', [-50,650]);
+legend(cfg.channel, 'Location','eastoutside', 'interpreter', 'none')
+title('Encoding model: envaudio_s'), ylabel('Amplitude (a.u.)')
+
+% % Plot reconstruction
+% subplot(2,2,3); hold on ;
+% % figure; hold on; 
+% plot((1:height(stest))/fs,stest(:, 1),'linewidth',2, 'DisplayName', 'stim')
+% plot((1:height(rtest))/fs,rtest(:, 1),'linewidth',2, 'DisplayName', 'resp')
+% plot((1:height(pred))/fs,pred(:, 1)*5,'linewidth',4, 'Color', 'k', 'LineStyle', '--', 'DisplayName', 'resp-pred   '),
+% hold off, xlim([0,25])% , axis square, grid on
+% title('Reconstruction'), xlabel('Time (s)'), ylabel('Amplitude (a.u.)'), legend()
+
+% Plot GFP
+subplot(2,2,4), mTRFplot(model,'gfp','all','all',[-50,350]);
+title('Global Field Power')
+
+%% Encoding permutation test: stat significance 
+
+nPerm = 100;  % number of permutations
+r_perm = zeros(nPerm, 1);  % to hold null correlations
+
+for iperm = 1:nPerm
+    % Circularly shift stimulus by a random amount to break temporal alignment
+    shift_amt = randi(size(stim_X, 1));
+    stim_perm = circshift(stim_X, shift_amt);
+
+    % Repartition permuted stimulus (same train/test split)
+    [strain_perm, ~, stest_perm, ~] = mTRFpartition(stim_perm, resp_X, nfold, testTrial);
+
+    % Train model on permuted stimulus
+    model_perm = mTRFtrain(strain_perm, rtrain, fs, Dir, tmin, tmax, lambda(idx), 'zeropad', 0);
+
+    % Test model on real response and permuted stimulus
+    [~, test_perm] = mTRFpredict(stest_perm, rtest, model_perm, 'zeropad', 0);
+    
+    % Store correlation
+    r_perm(iperm) = test_perm.r;
+end
+
+% Compute empirical p-value
+p_empirical = mean(r_perm >= test.r);  % one-tailed test: how often null r >= real r
+
+% Display result
+fprintf('Empirical p-value (one-tailed): %.4f\n', p_empirical);
+
+% Plot null distribution
+figure;
+histogram(r_perm, 20);
+hold on;
+xline(test.r, 'r', cfg.channel, 'LineWidth', 2);
+xlabel('Test Correlation (r)');
+ylabel('Permutation Count');
+title(sprintf('Permutation Test'));
+% legend; 

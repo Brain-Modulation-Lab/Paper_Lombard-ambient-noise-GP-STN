@@ -1,0 +1,1537 @@
+
+% function [] = A01_prepare_subject_TFR(SUBJECT, CHANNELS, CHANNELS_SUBSET_NAME, CFG_TFR)
+% function tfr_wavelet(cfg)
+% Latane Bullock 20230524 
+
+close all;  
+
+bml_defaults
+% clear all; SUBJECT = 'DM1012'; CHANNELS = {'macro_*', 'ecog_L16*',  'audio*', 'envaudio*'};
+% clear all;SUBJECT = 'DM1033'; CHANNELS = {'macro_*', 'ecog_L234',  'audio*', 'envaudio*'};
+% clear all;SUBJECT = 'DM1003'; CHANNELS = {'macro_*', 'ecog_L233', 'audio*', 'envaudio*'};
+
+% clear all; SUBJECT = 'DM1007'; 
+% CHANNELS = {'macro_*', 'ecog_L*',  'audio*', 'envaudio*'};
+% CHANNELS_SUBSET_NAME = 'DM1007-macro-allecog-audio'; 
+
+% CFG_TFR = [];
+% CFG_TFR.id = '001_gamma_mtdpss_band-60-200_nbank-01'; 
+% CFG_TFR.method = 'ft-dpss';  % ft-dpss, bandpass-hilbert, bandpass-bank-hilbert
+% CFG_TFR.fbank_collapse_method = 'none'; % none, pca, median, mean, zscore
+% CFG_TFR.fbank_withinband_norm = 'none'; % none, mean, median, zscore
+% CFG_TFR.fbank_n = 1; % pca, median, mean
+% CFG_TFR.freq_lowhigh = [60 200];
+% CFG_TFR.fs_out = 100;
+
+
+% compute TFR 
+clear all; SUBJECT = 'DM1033'; 
+CHANNELS = {'dbs_*', 'audio*', 'envaudio*'};
+CHANNELS_SUBSET_NAME = 'DBS-bipolar-allways-TFR'; 
+
+% % compute TFR 
+% % case study on DM1038
+% clear all; SUBJECT = 'DM1033'; 
+% CHANNELS = {'ecog_*', 'dbs_*', 'audio*', 'envaudio*'};
+% CHANNELS_SUBSET_NAME = 'ecog-dbs-CTAR-TFR-with-artifact-B'; 
+
+
+% % compute theta-alpha
+% clear all; SUBJECT = 'DM1019'; 
+% CHANNELS = {'macro_*'};
+% CHANNELS_SUBSET_NAME = 'macro-thetaalpha'; 
+% CFG_TFR = [];
+% CFG_TFR.id = '010_thetaalpha_mtmconvol_band-4-12'; 
+% CFG_TFR.method = 'ft-mtmconvol';  % ft-dpss, bandpass-hilbert, bandpass-bank-hilbert
+% CFG_TFR.fbank_collapse_method = 'none'; % none, pca, median, mean, zscore
+% CFG_TFR.fbank_withinband_norm = 'none'; % none, mean, median, zscore
+% CFG_TFR.fbank_n = 1; % pca, median, mean
+% CFG_TFR.freq_lowhigh = [4 12];
+% CFG_TFR.fs_out = 100;
+
+
+
+SESSION = 'intraop'; 
+TASK = 'lombard';
+
+if ispc
+    PATH_DBSROOT = 'Y:/DBS'; 
+else 
+    PATH_DBSROOT = '/Volumes/Nexus4/DBS'; 
+end
+PATH_ANALYSIS = [PATH_DBSROOT filesep 'groupanalyses/task-lombard/20230524-subctx-lfp-group-PLB'];
+cd(PATH_ANALYSIS); 
+
+PATH_FIG = [PATH_ANALYSIS filesep 'fig'];
+PATH_NEWDATA = [PATH_ANALYSIS filesep 'data'];
+if ~isempty(CHANNELS); 
+    chs_oi = CHANNELS; 
+else 
+%     chs_oi = {'macro_*', 'dbs_*', 'micro_*', 'audio*'}; % {'macro_*', 'ecog_*'} % channels of interest {'macro_*', 'dbs_*'}
+    % chs_oi = {'macro_Lc'}; % channels of interest {'macro_*', 'dbs_*'}
+    chs_oi = {'ecog_*', 'audio*'};
+end 
+
+% PATH_ANALYSIS = 'Y:\DBS\groupanalyses\task-lombard\20221101-artifact-rejection-PLB';
+% PATH_FIG = [PATH_ANALYSIS '\fig'];
+% chs_oi = {'ecog_*'}; % channels of interest 
+
+
+% TLOCK='sp-on', sort_by='duration' short pauses     as annotated by TextGrids
+% 'sp-off', short pauses as annotated by TextGrids
+% 'acoustic-edge-rising', 'prominence' acoustic edges detected from Praat-based intensity curve
+% 'acoustic-edge-falling', acoustic edges detected from Praat-based intensity curve
+% 'word-on', words according to TextGrid annotations
+TLOCK = 'audio-on'; % 'sentence-on'; 
+
+% frequency analyses parameters
+TF_RATE = 20; %Hz Sampling rate of time frequency plot
+TF_FOI = 10.^(0.6:0.045:2.4);
+% TF_FOI = 10:5:201; % linear spacing for gamma analyses
+TF_BASELINE_WIDTH = 0.5;
+
+FUNCTION_WORDS = {'sp', 'AND', 'THE', 'ARE', 'OF', 'A', 'IN', 'TO', 'WITH', 'AT', 'BY'}; 
+
+%% Setup
+
+PATH_DER = [PATH_DBSROOT filesep 'derivatives'];
+PATH_DER_SUB = [PATH_DER filesep 'sub-' SUBJECT];  
+PATH_PREPROC = [PATH_DER_SUB filesep 'preproc'];
+PATH_ANNOT = [PATH_DER_SUB filesep 'annot'];
+PATH_FIELDTRIP = [PATH_DER_SUB filesep 'fieldtrip'];
+
+
+% loading annotation tables
+tblopts = {'AppendColsFromFilename', true}; 
+sessions = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_sessions.tsv'], tblopts{:});
+runs = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_runs.tsv'], tblopts{:});
+channels = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_channels.tsv'], tblopts{:});
+
+
+trials = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_annot-trials.tsv'], tblopts{:});
+[~, rmidxs] = rmmissing(trials(:, {'starts', 'ends', 'duration'})); 
+trials = trials(~rmidxs, :);
+
+trials{:,  {'starts_trials', 'ends_trials'}} = trials{:,  {'starts', 'ends'}}; 
+
+% if a run has less than 20 trials, it likely shouldn't be in the final
+% analysis as it will be underpowered
+[G, run_ids] = findgroups(trials(:, 'run_id'));
+ntrs = splitapply(@numel, trials(:, 'run_id'), G);
+% trials(ismember(G, run_ids.run_id(ntrs<20)), :) = [];
+trials(ismember(G, find(ntrs<20)), :) = [];
+
+
+
+sentences = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_annot-produced-sentences.tsv'], tblopts{:});
+% utterances_whisperx = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_annot-produced-utterances-whisperx.tsv'], tblopts{:});
+% sentences_acoustics = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_annot-produced-sentences-acoustics.tsv'], tblopts{:});
+words = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_annot-produced-words.tsv'], tblopts{:});
+acoustic_edges = bml_annot_read_tsv([PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_annot-produced-acoustic-edges.tsv'], tblopts{:});
+if contains(TLOCK, 'rising'); acoustic_edges=acoustic_edges(acoustic_edges.acoustic_event_type=="edge-rising", :); 
+elseif contains(TLOCK, 'falling'); acoustic_edges=acoustic_edges(acoustic_edges.acoustic_event_type=="edge-falling", :);
+end
+% filter acoustic edges for run_id which are present in trials
+acoustic_edges = acoustic_edges(ismember(acoustic_edges.run_id, unique(trials.run_id)), :); 
+
+files = struct2table(dir([PATH_DER_SUB filesep 'acousticspectrum' filesep '*formant.mat'])); 
+files.name = cellstr(files.name); files.folder = cellstr(files.folder);
+formant = []; 
+for ifile = 1:height(files)
+   ld = load(fullfile(files.folder{ifile}, files.name{ifile}));
+   if isempty(formant); formant = ld;
+   else formant = ft_appenddata([], formant, ld);
+   end
+end
+
+files = struct2table(dir([PATH_DER_SUB filesep 'acousticspectrum' filesep '*pitch.mat'])); 
+files.name = cellstr(files.name); files.folder = cellstr(files.folder);
+pitch = []; 
+for ifile = 1:height(files)
+   ld = load(fullfile(files.folder{ifile}, files.name{ifile}));
+   if isempty(pitch); pitch = ld;
+   else pitch = ft_appenddata([], pitch, ld);
+   end
+end
+
+
+
+% p = [PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_annot-artifact-manual.tsv']; 
+% if exist(p, 'file')
+%     artifacts_man = bml_annot_read_tsv(p, tblopts{:});
+%     artifacts = bml_annot_rowbind(artifacts, artifacts_man); 
+% end
+
+
+
+%% Load artifact tables and filter by status==bad
+artifact_fnames = {'_artifact-criteria-A.tsv', ...
+                   '_artifact-criteria-B.tsv', ...
+                   '_artifact-criteria-manual.tsv', ... 
+                   '_annot-artifact.tsv'};
+
+artifacts = table();
+for ifile = 1:length(artifact_fnames)
+    p  = [PATH_ANNOT filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK artifact_fnames{ifile}];
+    disp(p)
+    if exist(p, 'file')
+        disp('exists')
+        art_new = bml_annot_read_tsv(p, tblopts{:});
+
+        % if starts and ends are not variables, it's likely a
+        % manually-coded artifact table with trial_id and run_id
+        if ~all(ismember({'starts', 'ends'}, art_new.Properties.VariableNames))
+            art_new = join(art_new, trials, 'Keys', {'run_id', 'trial_id'}, 'RightVariables', {'starts', 'ends'});
+        end
+
+        if ismember('status', art_new.Properties.VariableNames)
+            art_new = art_new(contains(art_new.status, 'bad'), :);
+        end
+        if ismember('description', art_new.Properties.VariableNames)
+            art_new = art_new(contains(art_new.description, 'bad'), :);
+        end
+        if ismember('ch_name', art_new.Properties.VariableNames)
+            art_new = renamevars(art_new, 'ch_name', 'channel');
+        end
+
+        if isempty(artifacts)
+            artifacts = art_new;
+        else
+            artifacts = bml_annot_rowbind(artifacts, art_new);
+        end
+    else disp('Does not exist'); end
+end
+
+
+%% % filter whisperx utterances by trials 
+% utterances_whisperx.Properties.Description = 'whisperx-utterances'; 
+% trials.Properties.Description = 'trial'; 
+% % utterances_whisperx_trialed = bml_annot_intersect([], utterances_whisperx, trials);
+% sentences_wx = utterances_whisperx(utterances_whisperx.duration > 0.75, :); 
+% cfg = []; 
+% cfg.select = 'trial_id';
+% sentences_wx = bml_annot_transfer([], utterances_whisperx_trialed, trials);
+% 
+% % compare whisperx sentences with 
+% sentences_all = bml_annot_rowbind(sentences_wx, sentences); 
+% figure;  bml_annot_plot([], sentences_all)
+
+
+%% Define epochs and baseline tables 
+% epoch = trials(:,{'run_id','block_id','trial_id','sentence_id','sentence_text','go_time'});
+% discont_baseline = false;
+timevars_activ = {'starts_activ', 'ends_activ', 't0_activ'}; % time vars related to the activation/interest window
+timevars_basel = {'starts_basel', 'ends_basel', 't0_basel'}; % time vars related to the baseline window
+timevars =       {'starts',       'ends',       't0'}; % variables that will change throughout the script to facilitate data manipulation
+
+
+switch TLOCK
+    case 'sentence-on'
+        sentences = renamevars(sentences, {'starts', 'ends'}, {'starts_sentences', 'ends_sentences'}); 
+
+        cfg = []; 
+        cfg.keys = {'subject_id', 'run_id', 'trial_id'}; 
+        trials = bml_annot_left_join(cfg, trials, sentences);
+
+        % return sentences to its original state
+        sentences = renamevars(sentences, {'starts_sentences', 'ends_sentences'}, {'starts', 'ends'}); 
+
+        epoch = trials; 
+    
+        epoch{:, timevars_activ} = repmat(epoch.starts_sentences, [1 3]); 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+        epoch = epoch(~ismissing(epoch.t0),:); %removing rows with NaNs
+
+        toi = [-6 6]; % leave enough room for audio
+
+        epoch = bml_annot_extend(epoch,-toi(1),toi(2));
+        epoch(:, timevars_activ) = epoch(:, timevars); 
+
+
+
+        % this is the time in the trial-wise fieldtrip object where the 
+        % baseline data will be spliced into
+        tbasel = [-4 -3]; 
+        % this is the time in the baseline fieldtrip object where the
+        % baseline data are pulled from
+        tbasel_baselepoch = [-1, 0]; 
+        
+        % windows should be of same length
+        assert(diff(tbasel) - diff(tbasel_baselepoch) < 0.01); 
+
+        epoch{:, timevars_basel} = repmat(epoch.audio_onset, [1 3]); 
+
+        epoch(:, timevars) = epoch(:, timevars_basel); 
+        epoch = bml_annot_extend(epoch,-(tbasel_baselepoch(1)-1),tbasel_baselepoch(2)+1);
+        epoch(:, timevars_basel) = epoch(:, timevars); 
+
+        % return epoch to its original state 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+    
+    case 'sentence-off'
+        sentences = renamevars(sentences, {'starts', 'ends'}, {'starts_sentences', 'ends_sentences'}); 
+
+        cfg = []; 
+        cfg.keys = {'subject_id', 'run_id', 'trial_id'}; 
+        trials = bml_annot_left_join(cfg, trials, sentences);
+        
+        % return sentences to its original state
+        sentences = renamevars(sentences, {'starts_sentences', 'ends_sentences'}, {'starts', 'ends'}); 
+
+        epoch = trials; 
+    
+        epoch{:, timevars_activ} = repmat(epoch.ends_sentences, [1 3]); 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+        epoch = epoch(~ismissing(epoch.t0),:); %removing rows with NaNs
+
+        toi = [-6, 2];
+
+        epoch = bml_annot_extend(epoch,-toi(1),toi(2));
+        epoch(:, timevars_activ) = epoch(:, timevars); 
+
+
+        % this is the time in the trial-wise fieldtrip object where the 
+        % baseline data will be spliced into
+        tbasel = [0.25 1.25]; 
+        % this is the time in the baseline fieldtrip object where the
+        % baseline data are pulled from
+        tbasel_baselepoch = [0.25 1.25]; 
+        
+        % windows should be of same length
+        assert(diff(tbasel) - diff(tbasel_baselepoch) < 0.01); 
+        
+        % BASELINE
+        epoch{:, timevars_basel} = repmat(epoch.ends_sentences, [1 3]); 
+
+        epoch(:, timevars) = epoch(:, timevars_basel); 
+        epoch = bml_annot_extend(epoch,-(tbasel_baselepoch(1)-1),tbasel_baselepoch(2)+1); % 1-second buffer on either side
+        epoch(:, timevars_basel) = epoch(:, timevars); 
+
+        % return epoch to its original state 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+
+    case 'acoustic-edge-rising'
+        acoustic_edges = renamevars(acoustic_edges, {'starts', 'ends'}, {'starts_acousticedge', 'ends_acousticedge'}); 
+
+        keys = {'subject_id', 'session_id', 'task_id', 'run_id', 'trial_id'}; 
+        acoustic_edges = join(acoustic_edges, trials, 'Keys',keys); 
+
+        epoch = acoustic_edges; 
+    
+        epoch{:, timevars_activ} = repmat(epoch.starts_acousticedge, [1 3]); 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+        epoch = epoch(~ismissing(epoch.t0),:); %removing rows with NaNs
+
+        toi = [-0.7 0.7]; % be generous
+
+        epoch = bml_annot_extend(epoch,-toi(1),toi(2));
+        epoch(:, timevars_activ) = epoch(:, timevars); 
+
+
+        % this is the time in the trial-wise fieldtrip object where the 
+        % baseline data will be spliced into
+        tbasel = [-0.5 0.5]; 
+        % this is the time in the baseline fieldtrip object where the
+        % baseline data are pulled from
+        tbasel_baselepoch = [-0.5, 0.5]; 
+        
+        % windows should be of same length
+        assert(diff(tbasel) - diff(tbasel_baselepoch) < 0.01); 
+
+        epoch{:, timevars_basel} = repmat(epoch.starts_acousticedge, [1 3]); 
+
+        epoch(:, timevars) = epoch(:, timevars_basel); 
+        epoch = bml_annot_extend(epoch,-(tbasel_baselepoch(1)-1),tbasel_baselepoch(2)+1);
+        epoch(:, timevars_basel) = epoch(:, timevars); 
+
+        % return epoch to its original state 
+        epoch(:, timevars) = epoch(:, timevars_activ);         
+
+    case 'word-on'
+        % every word in a sentence =
+        % baseline = trial ITG 
+        % So one baseline window will be repeated for multiple words
+        
+        % remove function words as they are often reduced in continuous
+        % speech
+        idxs_function_words = false(height(words), 1); 
+        for iw = 1:length(FUNCTION_WORDS)
+            idxs_function_words = idxs_function_words | strcmpi(words.word, FUNCTION_WORDS{iw}); 
+        end
+        words(idxs_function_words, :) = []; 
+        
+
+        words.starts_words = words.starts;
+        words.ends_words = words.ends;
+
+        keys = {'subject_id', 'session_id', 'task_id', 'run_id', 'trial_id'}; 
+        cfg = []; 
+        cfg.keys = keys; 
+        words = bml_annot_left_join(cfg, words, trials);
+
+        epoch = words; 
+    
+        epoch{:, timevars_activ} = repmat(epoch.starts_words, [1 3]); 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+        epoch = epoch(~ismissing(epoch.t0),:); %removing rows with NaNs
+        
+        % time of interest around event marker
+        toi = [-0.7 0.7]; % leave enough room for audio
+        epoch = bml_annot_extend(epoch,-toi(1),toi(2));
+        epoch(:, timevars_activ) = epoch(:, timevars); 
+
+
+        % now set baseline parameters
+
+        % this is the time in the trial-wise fieldtrip object where the 
+        % baseline data will end up
+        tbasel = [-0.5 0.5]; 
+        % this is the time in the baseline fieldtrip object where the
+        % baseline data are pulled from
+        tbasel_baselepoch = [-0.5, 0.5]; 
+        
+        % windows should be of same length
+        assert(diff(tbasel) - diff(tbasel_baselepoch) < 0.01); 
+
+        % ---- option 1: baseline to ITG
+%         epoch{:, timevars_basel} = repmat(epoch.itg_onset + epoch.itg_duration, [1 3]);
+        % ---- option 2: baseline to itself
+        epoch{:, timevars_basel} = repmat(epoch.starts_words, [1 3]);
+
+        epoch(:, timevars) = epoch(:, timevars_basel); 
+        epoch = bml_annot_extend(epoch,-(tbasel_baselepoch(1)-1),tbasel_baselepoch(2)+1);
+        epoch(:, timevars_basel) = epoch(:, timevars); 
+
+        % return epoch starts, ends, t0 to its original state 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+
+    case 'word-off'
+        % every word in a sentence =
+        % baseline = trial ITG 
+        % So one baseline window will be repeated for multiple words
+        
+        % remove function words as they are often reduced in continuous
+        % speech
+        idxs_function_words = false(height(words), 1); 
+        for iw = 1:length(FUNCTION_WORDS)
+            idxs_function_words = idxs_function_words | strcmpi(words.word, FUNCTION_WORDS{iw}); 
+        end
+        words(idxs_function_words, :) = []; 
+        
+
+        words.starts_words = words.starts;
+        words.ends_words = words.ends;
+
+        keys = {'subject_id', 'session_id', 'task_id', 'run_id', 'trial_id'}; 
+        cfg = []; 
+        cfg.keys = keys; 
+        words = bml_annot_left_join(cfg, words, trials);
+
+        epoch = words; 
+    
+        epoch{:, timevars_activ} = repmat(epoch.ends_words, [1 3]); 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+        epoch = epoch(~ismissing(epoch.t0),:); %removing rows with NaNs
+        
+        % time of interest around event marker
+        toi = [-4 3]; % leave enough room for audio
+        epoch = bml_annot_extend(epoch,-toi(1),toi(2));
+        epoch(:, timevars_activ) = epoch(:, timevars); 
+
+
+        % now set baseline parameters
+
+        % this is the time in the trial-wise fieldtrip object where the 
+        % baseline data will end up
+        tbasel = [-4 -3]; 
+        % this is the time in the baseline fieldtrip object where the
+        % baseline data are pulled from
+        tbasel_baselepoch = [-1, 0]; 
+        
+        % windows should be of same length
+        assert(diff(tbasel) - diff(tbasel_baselepoch) < 0.01); 
+
+        tbasel_pad = 0.1; % padding to reduce edge artefacts
+
+        epoch{:, timevars_basel} = repmat(epoch.itg_onset + epoch.itg_duration, [1 3]); 
+        
+        epoch(:, timevars) = epoch(:, timevars_basel); 
+        epoch = bml_annot_extend(epoch,-(tbasel_baselepoch(1)-1),tbasel_baselepoch(2)+1);
+        epoch(:, timevars_basel) = epoch(:, timevars); 
+
+        % return epoch starts, ends, t0 to its original state 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+
+    case 'audio-on'
+%         epoch = trials(:,{'audio_onset','audio_duration' 'run_id', 'trial_id'});
+        epoch = trials; 
+    
+        epoch{:, timevars_activ} = repmat(epoch.audio_onset, [1 3]); 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+        epoch = epoch(~ismissing(epoch.t0),:); %removing rows with NaNs
+
+        toi = [-2, 7];
+
+        epoch = bml_annot_extend(epoch,-toi(1),toi(2));
+        epoch(:, timevars_activ) = epoch(:, timevars); 
+
+
+        % this is the time in the trial-wise fieldtrip object where the 
+        % baseline data will be spliced into
+        tbasel = [-1 0]; 
+        % this is the time in the baseline fieldtrip object where the
+        % baseline data are pulled from
+        tbasel_baselepoch = [-1, 0]; 
+        
+        % windows should be of same length
+        assert(diff(tbasel) - diff(tbasel_baselepoch) < 0.01); 
+
+        epoch{:, timevars_basel} = repmat(epoch.audio_onset, [1 3]); 
+
+        epoch(:, timevars) = epoch(:, timevars_basel); 
+        epoch = bml_annot_extend(epoch,-(tbasel_baselepoch(1)-1),tbasel_baselepoch(2)+1); % 1-second buffer on either side
+        epoch(:, timevars_basel) = epoch(:, timevars); 
+
+        % return epoch to its original state 
+        epoch(:, timevars) = epoch(:, timevars_activ); 
+
+    otherwise
+        error("Timelock " + TLOCK + " not yet implemented.");
+end
+
+
+% epoch = trials(:,{'starts','ends','duration'});
+% epoch.starts = epoch.starts;
+% epoch.ends = epoch.starts;
+% epoch.t0 = trials.starts;
+% epoch = epoch(~ismissing(epoch.t0),:); %removing rows with NaNs
+% epoch = bml_annot_extend(epoch,5,5);
+
+
+% %% testing: inspect epochs structure
+% figure; 
+% cfg = []; cfg.y_offset = 0;
+% aa(:, timevars) = aa(:, {'starts_trials', 'ends_trials', 'starts_trials'});
+% bml_annot_plot(cfg, aa); 
+% 
+% 
+% cfg.y_offset = cfg.y_offset + 0.1; 
+% aa.audio_offset = aa.audio_onset + aa.audio_duration; 
+% aa(:, timevars) = aa(:, {'audio_onset', 'audio_offset', 'audio_onset'});
+% bml_annot_plot(cfg, aa); 
+% 
+% cfg.y_offset = cfg.y_offset + 0.1; 
+% aa(:, timevars) = aa(:, {'starts_sentences', 'ends_sentences', 'starts_sentences'});
+% bml_annot_plot(cfg, aa); 
+% 
+% cfg.y_offset = cfg.y_offset + 0.1; 
+% aa(:, timevars) = aa(:, {'itg_onset', 'itg_offset', 'itg_onset'});
+% bml_annot_plot(cfg, aa); 
+
+
+
+%% Load continuous EEG data 
+load([PATH_FIELDTRIP filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_ft-raw.mat'],'D');
+D0 = D; 
+% %% removing channels with audio envelope
+% cfg=[];
+% cfg.channel = {'all' '-env*'}; 
+% D0 = ft_preprocessing(cfg, D);
+
+
+%% Save respiration TSV 
+% cfg = []; cfg.channel = 'resp_1'; D_resp = ft_selectdata(cfg, D); 
+% 
+% D_resp = bml_apply(@(x) normalize(x), D_resp); 
+% 
+% cfg = []; 
+% cfg.epoch = trials; 
+% resp_summary = bml_annot_calculate(cfg, D_resp, ...
+%     'rms', @(x) rms(x), ...
+%     'min', @(x) min(x), 'max', @(x) max(x), 'range', @(x) range(x)); 
+% 
+% p = ['./data/resp' filesep bml_bids_basefname(SUBJECT, SESSION, TASK) '_resp'];
+% 
+% cfg = []; 
+% cg.criterion = @(x) x.noise_type(end) ~= x.noise_type(end-1); 
+% epoch_blocks = bml_annot_consolidate(cfg, epoch); 
+% 
+% cfg=[];
+% cfg.epoch = epoch;
+% cfg.timelock = 't0';
+% cfg.timesnap = true;
+% [D_resp_epoch, epoch_new] = bml_redefinetrial(cfg, D_resp); % BEWARE there's a chance epoch changes height if the epoch is not present in D
+% 
+% cfg =[]; 
+% cfg.trials = find(epoch.noise_type); 
+% D_resp_epoch_lmbrd = ft_selectdata(cfg, D_resp_epoch); 
+% cfg.trials = find(~epoch.noise_type); 
+% D_resp_epoch_quiet = ft_selectdata(cfg, D_resp_epoch); 
+% 
+% q = vertcat(D_resp_epoch_quiet.trial{:});
+% l = vertcat(D_resp_epoch_lmbrd.trial{:});
+% quiet_mean =  mean(q, 1); 
+% lmbrd_mean =  mean(l, 1); 
+% 
+% t = D_resp_epoch_quiet.time{1}; 
+% 
+% figure;  
+% plot(t, smooth(quiet_mean, 200), 'LineWidth', 4, 'Color', '#808080'); hold on; 
+% plot(t, smooth(lmbrd_mean, 200), 'LineWidth', 4, 'Color', '#CF5A48'); 
+% xlim([-2, 2]); 
+% 
+% % time = Dresp.time{:}; 
+% % resp = Dresp.trial{:}; 
+% % resp = normalize(resp);
+% % % Create a table with column names
+% % T = table(time', resp', 'VariableNames', {'time', 'resp'});
+% % T.starts = T.time; T.ends = T.time; 
+% 
+% % cfg =  []; cfg.select = 'trial_id'; 
+% % T = bml_annot_transfer(cfg, T, trials); 
+% 
+% % Write table data to a TSV file
+% writetable(resp_summary, p, 'FileType', 'text', 'Delimiter', '\t');
+% movefile([p '.txt'], [p '.tsv']); 
+
+%% Apply notch filtering
+
+cfg=[];
+% cfg.channel = {'macro_*','micro_*','dbs_*','audio*','ecog_*','V0_*'};
+cfg.channel = {'ecog_L101', 'ecog_L110', 'e'}; 
+% % --- DEV 
+% idxs = [154:163 201:205]; % DM1012 select target channels we know to be active {} 
+% cfg.channel = convertStringsToChars("ecog_L" + arrayfun(@(x) string(sprintf('%02d', x)), idxs)); 
+% % --- 
+D1 = ft_selectdata(cfg, D0);
+
+cfg=[];
+cfg.remask_nan = true;
+cfg.value = 0;
+D1 = bml_mask(cfg, D1);
+
+%high-pass and notch filtering
+freqs=[60 120 180 240];
+cfg=[];
+cfg.hpfilter='yes';
+cfg.hpfreq=1;
+cfg.hpfilttype='but';
+cfg.hpfiltord=5;
+cfg.hpfiltdir='twopass';
+cfg.bsfilter='yes';
+cfg.bsfreq= [freqs-1; freqs+1]';
+D_notch = ft_preprocessing(cfg,D1);
+
+%% Masking artifacts with NaNs
+
+% % 2024 12 16 we are going to manage artifacts using the epoch table--don't
+% % mask data here
+% cfg=[];
+% cfg.annot         = artifacts;
+% cfg.label_colname = 'channel';
+% cfg.complete_trsial = false; % masks entire trials
+% cfg.value = 0; % 2024 06 28 changed from nan to 0
+% % 2024 06 28 changed from 0 to nan
+% D_notch_mask = bml_mask(cfg, D_notch);
+
+%% Compute TFR for the whole session to inspect long-time-scale fluctuations
+% 
+% D = D_notch; 
+% 
+% cfg=[];
+% cfg.annot         = artifacts;
+% cfg.label_colname = 'channel';
+% cfg.complete_trial = false; %masks entire trials
+% cfg.value=0;
+% D = bml_mask(cfg, D);
+% 
+% 
+% cfg = [];
+% cfg.output     = 'pow';
+% cfg.pad        = 'nextpow2'; 
+% cfg.method     = 'mtmconvol';
+% cfg.foi        = TF_FOI;
+% cfg.t_ftimwin  = 5./cfg.foi;
+% cfg.tapsmofrq  = 0.4 *cfg.foi;
+% cfg.toi        = D.time{1}(1):5:D.time{1}(end);
+% cfg.keeptrials = 'yes'; 
+% TF = ft_freqanalysis(cfg, D);
+% 
+% % we have to scale the output manually--fieldtrip doesn't scale spectra properly 
+% dim = size(TF.powspctrm);
+% tmp = repmat(cfg.t_ftimwin(:), [1 dim(1)*dim(2)*dim(4)]); % repeat along second dim
+% tmp = reshape(tmp, [dim(3) dim(1) dim(2) dim(4)]); 
+% winNormFactor = permute(tmp, [2, 3, 1, 4]); % matrix with repeated values 
+% TF.powspctrm = TF.powspctrm .* winNormFactor; 
+
+
+%% Epoch fieldtrip object according to epoch table
+D = D_notch;
+epoch_orig = epoch;
+
+% epoch.Properties.Description = 'produced_sentences';
+% epoch = bml_annot_intersect('x',epoch,bml_raw2annot(D_filt));
+% epoch = epoch(epoch.duration > 4,:); 
+% epoch = epoch(epoch.duration > median(epoch.duration)-2,:);
+
+% remove any epochs that don't have all necessary time windows
+idxs_rm_epochs = any(ismissing(epoch(:, [timevars_activ timevars_basel])), 2); 
+epoch(idxs_rm_epochs, :) = []; 
+
+
+% makes sure starts, ends, t0 are for the window of interest
+epoch(:, timevars) = epoch(:, timevars_activ);   
+
+cfg=[];
+cfg.epoch = epoch;
+cfg.timelock = 't0';
+cfg.timesnap = true;
+[D_epoch, epoch] = bml_redefinetrial(cfg, D); % BEWARE there's a chance epoch changes height if the epoch is not present in D
+cfg.timelock = [];
+[D_epochgtc, ~] = bml_redefinetrial(cfg, D); % BEWARE there's a chance epoch changes height if the epoch is not present in D
+
+
+% epoch_basel = epoch_basel(epoch_basel.id==epoch.epoch_id, :); 
+% assert(height(epoch)==height(epoch_basel)); 
+
+
+% now time lock to baseline
+epoch(:, timevars) = epoch(:, timevars_basel); % makes sure starts, ends, t0 are  
+
+cfg=[];
+cfg.epoch = epoch;
+cfg.timelock = 't0';
+cfg.timesnap = true;
+[D_epochbasel, ~] = bml_redefinetrial(cfg, D); % epoched baseline
+
+% % how stable is the baseline? plot over time
+% idxs = sort(randperm(159, 10)); 
+% aa = [D_epochbasel.trial{:}]; 
+% figure; plot(aa'); 
+
+
+% patch together baseline and trial
+% this code splices together D_epoch and D_epochbasel 
+% in the end, D_epoch has "artificial" and discontinuous data from D_epoch
+% in the region of the matrix defined by tbasel + tbasel_pad
+% assert(length(D_epoch.trial)==length(D_epochbasel.trial))
+for it = 1:length(D_epoch.trial)
+    tidxs_epoch = D_epoch.time{it} > tbasel(1) & D_epoch.time{it} < tbasel(2); 
+    tidxs_basel = D_epochbasel.time{it} > tbasel_baselepoch(1) ... 
+                  & D_epochbasel.time{it} < tbasel_baselepoch(2); 
+    diff_sum = sum(tidxs_basel)-sum(tidxs_epoch); 
+    if diff_sum ~= 0
+        error('Index mismatch'); 
+%             if abs(diff_sum) > 3 % if there are more than 3 indexes off, there is something very wrong
+%                 error('Index mismatch'); 
+%             end
+%             ilast = find(tidxs_basel, 1, 'last'); 
+%             if diff_sum > 0 % baseline has too many time points
+%                 tidxs_basel(ilast + (1:abs(diff_sum))) = 0; 
+%             elseif diff_sum < 0 % % baseline has too few time points
+%                 tidxs_basel(ilast + (1:abs(diff_sum))) = 1; 
+%             end
+    end
+    assert(sum(tidxs_basel)==sum(tidxs_epoch)); % now they should have same number of 1s
+
+    D_epoch.trial{it}(:, tidxs_epoch) = D_epochbasel.trial{it}(:, tidxs_basel); % set trial baseline
+end
+
+epoch(:, timevars) = epoch(:, timevars_activ); % makes sure starts, ends, t0 are  
+
+
+%% Mask epoched data in preparation for referencing
+D = D_epoch; 
+
+D.time = D_epochgtc.time; % create global time coords 
+
+cfg=[];
+cfg.annot         = artifacts;
+cfg.label_colname = 'channel';
+cfg.complete_trial = true; % masks entire trials
+cfg.value = nan; % 2024 06 28 changed from nan to 0
+% 2024 12 26 changed from 0 to nan
+D_epoch_mask = bml_mask(cfg, D);
+
+D_epoch_mask.time = D_epoch.time; % replace to timelocked time vector
+
+% 2024 12 26 changed from 0 to nan
+% cfg=[];
+% cfg.value = 0;
+% cfg.remask_nan = true;
+% cfg.complete_trial = true;
+% D_epoch = bml_mask(cfg, D_epoch);
+
+
+%% Rereferencing subcortical data
+D = D_epoch_mask; 
+
+
+% macro reref ------------------
+if any(contains(D.label, 'macro'))
+
+    % append bipolar and common average reference channels
+    % if there are nans
+    % have to do weird gymnastics in case there are missing data/channels to
+    % avoid getting all nans
+    cfg = []; cfg.channel = 'macro_*';
+    D_macro = ft_selectdata(cfg, D);
+    D_macro_reref = bml_rereference_subctx_lfp([], D_macro);
+
+    cfg = []; cfg.channel = {'all', '-macro_*'};
+    D_not_macro = ft_selectdata(cfg, D);
+
+    D = ft_appenddata([], D_macro_reref, D_not_macro);
+
+end
+
+% dbs reref ------------------
+DBS_BIP_TYPES = {'vert-outside-bipolar', 'vert-bipolar', 'horz-bipolar'};
+labels_all = {}; 
+labels_ref_all = {}; 
+for itype = 1:length(DBS_BIP_TYPES)
+
+    % vertical L4 bipolar
+    if DBS_BIP_TYPES{itype}=="vert-outside-bipolar"
+        labels =     {'dbs_L3A', 'dbs_L3B', 'dbs_L3C', 'dbs_L2A', 'dbs_L2B', 'dbs_L2C', 'dbs_L1'}';%;'dbs_R1'};
+        labels_ref = {'dbs_L4',  'dbs_L4',  'dbs_L4',  'dbs_L4',  'dbs_L4',  'dbs_L4', 'dbs_L4'}';%;'dbs_R4'};
+    elseif DBS_BIP_TYPES{itype}=="vert-bipolar"
+        % vertical  bipolar
+        labels =     {'dbs_L2A', 'dbs_L2B', 'dbs_L2C', 'dbs_L3A', 'dbs_L3B', 'dbs_L3C', 'dbs_L4',  'dbs_L4',  'dbs_L4'}';%;'dbs_R1'};
+        labels_ref = {'dbs_L1',  'dbs_L1',  'dbs_L1',  'dbs_L2A', 'dbs_L2B', 'dbs_L2C', 'dbs_L3A', 'dbs_L3B', 'dbs_L3C'}';%;'dbs_R4'}
+    elseif DBS_BIP_TYPES{itype}=="horz-bipolar"
+        labels =     {'dbs_L3A', 'dbs_L3B', 'dbs_L3C', 'dbs_L2A', 'dbs_L2B', 'dbs_L2C'}';%;'dbs_R1'};
+        labels_ref = {'dbs_L3B',  'dbs_L3C',  'dbs_L3A',  'dbs_L2B',  'dbs_L2C',  'dbs_L2A'}';%;'dbs_R4'};
+    else error('dbs bipolar type not recognized')
+    end
+    labels_all = [labels_all; labels]; 
+    labels_ref_all = [labels_ref_all; labels_ref]; 
+end
+
+if any(contains(D.label, 'dbs'))
+
+    cfg = []; cfg.channel = 'dbs_*'; 
+    D_dbs = ft_selectdata(cfg, D); 
+    cfg = []; cfg.channel = {'all', '-dbs_*'}; 
+    D_not_dbs = ft_selectdata(cfg, D); 
+    
+    
+    cfg=[];
+    cfg.method = 'bipolar';
+    cfg.label = labels_all;  
+    cfg.refchan= labels_ref_all; 
+    cfg.refkeep = 1; 
+    %cfg.refchan = table(D.label,bml_map(D.label,label,reference,{'n/a'}),'VariableNames',{'label','reference'});
+    D_dbs_ref = bml_rereference_PLB20250502(cfg, D_dbs); % this version only returns the requested channels
+    
+    D = ft_appenddata([], D_dbs, D_dbs_ref, D_not_dbs); 
+
+%     % replace old labels with bipolar labels
+%     labelnew = string(cfg.label) + "_" + string(cfg.refchan); 
+%     labelnew = "dbs_" + erase(labelnew, "dbs_"); labelnew = convertStringsToChars(labelnew); 
+%     for i = 1:length(cfg.label); 
+%         ich = find(D_dbs_ref.label==string(cfg.label(i))); assert(length(ich)==1); 
+%         D_dbs_ref.label(ich) = labelnew(i); 
+%     end
+%     D = ft_appenddata([], D_dbs_ref, D_not_dbs); 
+
+
+end
+
+% ecog reref ------------------
+% warning('TEMPORARILY COMMENTED OUT ecog reref. Make sure this is what you want')
+if any(contains(D.label, 'ecog'))
+
+    cfg = []; cfg.channel = 'ecog_*';
+    D_ecog = ft_selectdata(cfg, D);
+    cfg = []; cfg.channel = {'all', '-ecog_*'};
+    D_not_ecog = ft_selectdata(cfg, D);
+
+    reref_grp = zeros([height(D_ecog.label) 1]);
+    reref_grp(contains(D_ecog.label, 'ecog_L1')) = 1;
+    reref_grp(contains(D_ecog.label, 'ecog_L2')) = 2;
+
+
+    cfg=[];
+    cfg.label = D_ecog.label;
+    cfg.group = reref_grp;
+    cfg.method = 'CTAR'; %using trimmed average referencing
+    cfg.percent = 50; %percentage of 'extreme' channels in group to trim
+    D_ecog_reref = bml_rereference(cfg, D_ecog);
+
+    D = ft_appenddata([], D_ecog_reref, D_not_ecog);
+end
+
+
+
+
+% cfg = []; 
+% bml_rereference()
+
+
+% % ecog Common Average Reference
+% el_ecog = channels(channels.type=="ecog",:);
+% cfg=[];
+% cfg.label = el_ecog.name;
+% cfg.group = el_ecog.connector;
+% cfg.method = 'CTAR'; %using trimmed average referencing
+% cfg.percent = 50; %percentage of 'extreme' channels in group to trim 
+% D_trial_ref = bml_rereference(cfg,D_filt_trial);
+
+% 
+% el_macro_L = channels(channels.type=="ecog",:);
+% D_macro = 
+% cfg=[];
+% cfg.label = el_ecog.name;
+% cfg.group = el_ecog.connector;
+% cfg.method = 'CTAR'; %using trimmed average referencing
+% cfg.percent = 50; %percentage of 'extreme' channels in group to trim 
+% D_trial_ref = bml_rereference(cfg,D_filt_trial);
+
+% % macro bipolar reference to central
+% chs_macro = D.label(startsWith(D.label, "macro_"), :);
+% chs_macro = unique(chs_macro);
+% if length(chs_macro) > 1
+%     cfg=[];
+%     cfg.method = 'bipolar'; 
+% %     cfg.label = setdiff(chs_macro, 'macro_Lc');
+%     cfg.label = chs_macro; 
+%     cfg.refchan = {'macro_Lc'}; 
+%     cfg.refkeep = true; 
+%     D_trial_ref = bml_rereference(cfg,D_trial_ref);
+% end
+
+
+
+% macro CAR
+
+%D_trial_ref = D_filt_trial;
+%   
+%   % macro bipolar reference to central
+%   el_macro = electrode(electrode.type=="macro",:);
+%   if ~isempty(el_macro)
+%     cfg=[];
+%     cfg.method = 'bipolar'; 
+%     cfg.label = unique(el_macro.electrode);
+%     cfg.refchan = {'macro_c'}; 
+%     cfg.refkeep = false; 
+%     D_trial_ref = bml_rereference(cfg,D_trial_ref);
+%   end
+%   
+%   % dbs lead bipolar reference
+%   el_dbs = electrode(electrode.type=="dbs",:);
+%   if ~isempty(el_dbs)
+%     cfg=[];
+%     cfg.method = 'CAR'; 
+%     cfg.group = el_dbs.connector;
+%     cfg.label = el_dbs.electrode;
+%     D_trial_ref = bml_rereference(cfg,D_trial_ref);
+%   end
+
+%   % ecog CTAR
+%   el_ecog = electrode(electrode.type=="ecog",:);
+%   if ~isempty(el_ecog)
+%     cfg=[];
+%     cfg.method = 'CTAR'; 
+%     cfg.percent = 50;
+%     cfg.group = el_ecog.connector;
+%     cfg.label = el_ecog.electrode;
+%     D_trial_ref = bml_rereference(cfg,D_trial_ref);
+%   end
+%   
+%clearvars D_filt_mask_trial
+
+% %
+% cfg = []; 
+% cfg.channel = 'macro_Lc-macro_L_CAR'; 
+% D_notch_trial_reref = ft_selectdata(cfg, D_notch_trial_reref); 
+
+D_epoch_reref = D; % D_trial_ref = D_filt_trial
+
+
+%% Save epoch structure (for use in python)
+D = D_epoch_reref; 
+
+% chs_str = strjoin(regexprep(chs_oi,'[^a-zA-Z\s]',''), '-');
+chs_str = CHANNELS_SUBSET_NAME; % added 2025 04 24 passed as function argument
+save_dir = [PATH_NEWDATA filesep 'tlock-' TLOCK '_chs-' chs_str]; mkdir(save_dir); 
+save_path = [save_dir filesep bml_bids_basefname(SUBJECT, SESSION, TASK) '_tlock-' TLOCK '_epoched'];
+save(save_path,'D','epoch','-v7.3');
+
+mfilePath = mfilename('fullpath');
+copyfile([mfilePath '.m'], [save_path '_READONLY_' char(datetime('now')) '.txt']); 
+
+
+%% testing code--visualize signals
+% D = D_epoch_reref; 
+% 
+% D.trial = cat(3, D.trial{:}); D.trial = permute(D.trial, [3 1 2]); 
+% % [~, ifreq] = min(abs(TF.freq - 135)); 
+% [ntrials, nchan, nsamp] = size(D.trial); 
+% 
+% ich = find(D.label=="ecog_L233"); assert(numel(ich)==1);
+% % [~, itrial] = sort(epoch.sentence_id); 
+% itrial = 1:ntrials; 
+% % close all; ecog_L234
+% 
+% close all; figure('position', [-17   366   560   420]); 
+% imagesc(D.time{1}, 1:ntrials, log10(squeeze(D.trial(itrial, ich, :)).^2) ); 
+% % imagesc(TF_beh.time, 1:ntrials, (squeeze(TF_beh.powspctrm(itrial, ich, ifreq, :))) ); 
+% colorbar; title(D.label(ich), 'interpreter', 'none');
+% % caxis([0 1]); 
+% % grid on; shg
+
+%% DEV--PAC between macro and ecog channels 
+% 2025 07 20 this was developed as an initial go at phase-amplitude
+% coupling. I evenetually decided to go with a python version using mne. 
+% cfg = [];
+% cfg.channel = 'macro_*';
+% cfg.bpfilter = 'yes';
+% cfg.bpfreq = [13 30];
+% cfg.bpfilttype = 'but';
+% cfg.hilbert = 'angle';  % for phase
+% D_sel = ft_selectdata(cfg, D_epoch_reref); % figure; imagesc([D_sel.trial{:}])
+% D_beta = ft_preprocessing(cfg, D_sel);
+% 
+% 
+% cfg = [];
+% cfg.channel = {'ecog_L233'}; % 'ecog_*';
+% cfg.bpfilter = 'yes';
+% cfg.bpfreq = [60 150];  % adjust to match your gamma band
+% cfg.bpfilttype = 'but';
+% cfg.hilbert = 'abs';  % for amplitude envelope
+% D_sel = ft_selectdata(cfg, D_epoch_reref); % figure; imagesc([D_sel.trial{:}])
+% 
+% D_gamma = ft_preprocessing(cfg, D_sel);
+% 
+% 
+% % set up PAC comparison
+% D = D_epoch_reref; 
+% 
+% 
+% chanlow = D.label(ismember(D.label, {'ecog_L234'})); %, 'macro_Ll', 'macro_Lc', 'macro_Lp'})); 
+% chanhigh = D.label(ismember(D.label, {'ecog_L234'})); %, 'ecog_L235', 'macro_Ll', 'macro_Lc', 'macro_Lp'})); 
+% 
+% % chanlow = D.label(contains(D.label, 'macro_'));  % beta phase
+% % chanhigh = D.label(contains(D.label, 'ecog_'));  % gamma amp
+% 
+% fs = D.fsample;
+% 
+% nbins = 18;
+% edges = linspace(-pi, pi, nbins+1);
+% 
+% % PAC time axis
+% winlen_sec = 0.2; step_sec = 0.1;
+% winlen = round(winlen_sec * fs);
+% step = round(step_sec * fs);
+% ntime = floor((length(D.time{1}) - winlen) / step);
+% PAC_time = D.time{1}(1) + (0:(ntime - 1)) * (step / fs);
+% 
+% % Initialize D_PAC
+% D_PAC = [];
+% D_PAC.label = {};
+% D_PAC.time = repmat({PAC_time}, length(D.trial), 1);
+% D_PAC.trial = cell(length(D.trial), 1);
+% D_PAC.fsample = fs;
+% 
+% % loop over channel pairs
+% for ilow = 1:length(chanlow)
+%     for ihigh = 1:length(chanhigh)
+% 
+%         label_pair = chanlow{ilow} + "_x_" + chanhigh{ihigh};
+%         D_PAC.label{end+1} = label_pair;
+% 
+%         % select individual channels
+%         cfg = []; cfg.channel = chanlow(ilow);
+%         D_low = ft_selectdata(cfg, D);
+% 
+%         cfg = []; cfg.channel = chanhigh(ihigh);
+%         D_high = ft_selectdata(cfg, D);
+% 
+%         % filter and hilbert: phase (beta)
+%         cfg = [];
+%         cfg.bpfilter = 'yes'; cfg.bpfreq = [13 30]; cfg.bpfilttype = 'but';
+%         cfg.hilbert = 'angle';
+%         D_low = ft_preprocessing(cfg, D_low);
+% 
+%         % filter and hilbert: amplitude (gamma)
+%         cfg = [];
+%         cfg.bpfilter = 'yes'; cfg.bpfreq = [60 150]; cfg.bpfilttype = 'but';
+%         cfg.hilbert = 'abs';
+%         D_high = ft_preprocessing(cfg, D_high);
+% 
+%         % per trial PAC computation
+%         for tr = 1:length(D.trial)
+% 
+%             beta_phase = D_low.trial{tr};
+%             gamma_amp  = D_high.trial{tr};
+% 
+%             % initialize trial PAC for this pair if not yet
+%             if size(D_PAC.trial{tr}, 1) < (length(D_PAC.label))
+%                 D_PAC.trial{tr}(length(D_PAC.label), 1:ntime) = NaN;
+%             end
+% 
+% 
+% 
+%             % skip if either trial contains mostly NaNs
+%             if all(isnan(beta_phase)) || all(isnan(gamma_amp))
+%                 continue;
+%             end
+% 
+%             % skip trial if too many NaNs in sliding window
+%             if sum(~isnan(beta_phase)) < winlen || sum(~isnan(gamma_amp)) < winlen
+%                 continue;
+%             end
+% 
+%             for t = 1:ntime
+%                 idxs = (1:winlen) + (t - 1) * step;
+%                 if any(idxs > length(beta_phase)); break; end
+% 
+%                 b_phase = beta_phase(idxs);
+%                 g_amp = gamma_amp(idxs);
+%                 % figure; plot(g_amp); hold on; plot(b_phase)
+% 
+%                 if any(isnan(b_phase)) || any(isnan(g_amp))
+%                     continue;
+%                 end
+% 
+%                 amp_binned = zeros(1, nbins);
+%                 for b = 1:nbins
+%                     sel = b_phase > edges(b) & b_phase <= edges(b+1);
+%                     amp_binned(b) = mean(g_amp(sel), 'omitnan');
+%                 end
+% 
+%                 if sum(amp_binned) == 0 || any(amp_binned < 0)
+%                     MI = NaN;
+%                 else
+%                     amp_binned = amp_binned / sum(amp_binned + eps);
+%                     assert(abs(sum(amp_binned) - 1) < 1e-6, 'amp_binned not normalized');
+% 
+%                     H = -sum(amp_binned .* log(amp_binned + eps));  % natural log
+%                     MI = (log(nbins) - H) / log(nbins);  % consistent base
+%                 end
+% 
+%                 D_PAC.trial{tr}(length(D_PAC.label), t) = MI;
+%             end
+%         end
+%     end
+% end
+% 
+% 
+% D_PAC.label = D_PAC.label(:);  % convert to char array for compatibility
+% D_PAC.label = cellfun(@(s) char(s), D_PAC.label, 'UniformOutput', false);
+% 
+% % Plotting routine for PAC
+% % Parse low/high channels from label names
+% nlabels = numel(D_PAC.label);
+% chanlow_all = strings(nlabels, 1);
+% chanhigh_all = strings(nlabels, 1);
+% 
+% for i = 1:nlabels
+%     tokens = strsplit(D_PAC.label{i}, '_x_');
+%     chanlow_all(i) = tokens{1};
+%     chanhigh_all(i) = tokens{2};
+% end
+% 
+% unique_high = unique(chanhigh_all);
+% unique_low = unique(chanlow_all);
+% ntime = length(D_PAC.time{1});
+% ntrials = numel(D_PAC.trial);
+% 
+% % Build data cube: [ntrials × chanpair × time]
+% PAC_cube = nan(ntrials, nlabels, ntime);
+% for tr = 1:ntrials
+%     PAC_cube(tr, :, :) = D_PAC.trial{tr};
+% end
+% 
+% % Plotting loop
+% TOI_PLOT = [D_PAC.time{1}(1), D_PAC.time{1}(end)];
+% for ih = 1:length(unique_high)
+%     high_ch = unique_high(ih);
+%     fig = figure('Name', high_ch, 'Color', 'w', 'Position', [100 100 900 600]);
+%     t = tiledlayout(length(unique_low), 1, 'TileSpacing', 'compact');
+% 
+%     for il = 1:length(unique_low)
+%         low_ch = unique_low(il);
+% 
+%         % Find index for this channel pair
+%         pair_label = low_ch + "_x_" + high_ch;
+%         pair_idx = find(D_PAC.label == pair_label);
+% 
+%         if isempty(pair_idx)
+%             warning('No data for %s', pair_label);
+%             continue;
+%         end
+% 
+%         % Extract PAC time series across trials
+%         traces = squeeze(PAC_cube(:, pair_idx, :));  % [ntrials × time]
+% 
+%         % Compute SEM and mean
+%         sem = std(traces, [], 1, 'omitnan') ./ sqrt(sum(~isnan(traces), 1));
+%         m = mean(traces, 1, 'omitnan');
+% 
+%         % Optional smoothing
+%         m = sgolayfilt(m, 3, 31);
+%         sem(isnan(sem)) = 0;
+%         m(isnan(m)) = 0;
+% 
+%         % Plot
+%         ax = nexttile;
+%         plot_bounded_line(D_PAC.time{1}, m, sem, 'k', 'hA', ax);
+%         xlim(TOI_PLOT);
+% %         ylim([0, 0.2])
+%         ylabel(low_ch, 'Interpreter', 'none');
+%         title(sprintf('%s → %s', low_ch, high_ch), 'Interpreter', 'none');
+%     end
+% 
+%     xlabel(t, 'Time (s)');
+%     ylabel(t, 'PAC (MI)');
+%     title(t, sprintf('PAC to %s (high freq)', high_ch), 'Interpreter', 'none');
+% 
+%     % Export if needed
+%     % exportgraphics(fig, sprintf('figs/PAC_%s.pdf', high_ch));
+% end
+
+
+
+%% Exract gamma 
+D = D_epoch_reref; 
+
+% CFG_TFR = [];
+% CFG_TFR.id = '001_gamma_mtdpss_band-60-200_nbank-01';
+% CFG_TFR.method = 'ft-dpss';  % ft-dpss, bandpass-hilbert, bandpass-bank-hilbert
+% CFG_TFR.fbank_collapse_method = 'none'; % none, pca, median, mean, zscore
+% CFG_TFR.fbank_withinband_norm = 'none'; % none, mean, median, zscore
+% CFG_TFR.fbank_n = 1; % pca, median, mean
+% CFG_TFR.freq_lowhigh = [60 200];
+% CFG_TFR.fs_out = 100;
+% warning('CFG_TFR is being overwritten within A01')
+
+% CFG_TFR is passed as an input to this function/script
+TF = bml_extractgamma(CFG_TFR, D); 
+TF.cfg_gamma_extraction = CFG_TFR; 
+
+sum(isnan(TF.powspctrm(:)))
+
+%% Compute time-frequency representation
+D = D_epoch_reref; 
+
+% cfg = [];
+% cfg.output     = 'pow';
+% cfg.pad        = 'nextpow2'; 
+% cfg.method     = 'mtmconvol';
+% cfg.foi        = TF_FOI;
+% cfg.t_ftimwin  = 5./cfg.foi;
+% cfg.tapsmofrq  = 0.4 *cfg.foi;
+% cfg.toi        = toi(1):0.02:toi(2);
+% cfg.keeptrials = 'yes'; 
+% TF = ft_freqanalysis(cfg, D);
+% 
+% % we have to scale the output manually--fieldtrip doesn't scale spectra properly 
+% dim = size(TF.powspctrm);
+% tmp = repmat(cfg.t_ftimwin(:), [1 dim(1)*dim(2)*dim(4)]); % repeat along second dim
+% tmp = reshape(tmp, [dim(3) dim(1) dim(2) dim(4)]); 
+% winNormFactor = permute(tmp, [2, 3, 1, 4]); % matrix with repeated values 
+% TF.powspctrm = TF.powspctrm .* winNormFactor; 
+
+
+
+
+
+
+% % Skyla: Parameters for spectral analysis
+% maxFreq = 150;
+% windStep = 0.1;
+% timeWindow = .5; %mtm
+% freqSmoothing = 2; %mtm
+% cfg = [];
+% cfg.method = 'mtmconvol';
+% cfg.output = 'pow';
+% cfg.pad = 'nextpow2';
+% cfg.tapsmofrq = freqSmoothing; %mtm
+% cfg.taper = 'dpss'; %mtm
+% cfg.width = 15; %wavelet
+% cfg.foi = 1:1:maxFreq;
+% cfg.t_ftimwin = timeWindow*ones(size(cfg.foi)); %mtm
+% cfg.toi= event.time{1}(1):windStep:event.time{1}(end);
+% temp(j) = ft_freqanalysis(cfg,event);
+% ft_freqanalysis.pow
+% 
+% 
+% % Zeyang
+% winLen = 0.01;
+% minSmoothing = 1/winLen;
+% freqSmoothing = max(2,minSmoothing); % half-bandwidth [Hz]: f_HBW > 1/winLen
+% 
+% cfg = [];
+% cfg.method      = 'mtmconvol';
+% cfg.taper       = 'dpss';
+% cfg.output      = 'pow';
+% cfg.channel     = 'all';
+% cfg.tapsmofrq   = freqSmoothing; % half-Freq-width for smoothing
+% cfg.foi         =  TF_FOI; %Hz
+% cfg.pad         = 'nextpow2';
+% % <WRONG> # ftimwin should be 'freq * timewin_sec'; [<WRONG>], confirmed by ZY 2023-07-25]
+% 
+% % "ftimwin: The timewindow for each foi in sec [confimed by ZY 2023-07-25]
+% 
+% cfg.t_ftimwin = winLen*ones(size(cfg.foi));
+% cfg.toi        = toi(1):(winLen/2):toi(2);
+% TF = ft_freqanalysis(cfg, D);
+
+
+
+
+% cfg=[];
+% cfg.foi = TF_FOI;
+% cfg.dt = 1/TF_RATE;
+% cfg.toilim = toi;
+% TF = bml_freqanalysis_power_wavelet(cfg, D);
+% % TF.powspctrm = mean(TF.powspctrm, 1); % average across trials
+
+% %% TESTING: plotting code 
+% cfgtmp = []; 
+% cfgtmp.trials = 'all'; 
+% cfgtmp.channel  = 'macro_Lc';
+% datatmp.TF_ch = ft_selectdata(cfgtmp, TF); 
+% then use code from A03 to plot single channel
+
+%% Average over theta-alpha from TFR
+if contains(CFG_TFR.id, 'thetaalpha')
+    warning('Selecting and averaging over theta-alpha band')
+    cfgtmp = [];
+    cfgtmp.trials = 'all';
+    cfgtmp.avgovertime = 'no';
+    cfgtmp.avgoverrpt = 'no';
+    cfgtmp.avgoverfreq = 'yes';
+
+    cfgtmp.frequency = [4, 12];
+    TF = ft_selectdata(cfgtmp, TF);
+
+elseif contains(CFG_TFR.id, 'beta')
+    warning('Selecting and averaging over beta band')
+    cfgtmp = [];
+    cfgtmp.trials = 'all';
+    cfgtmp.avgovertime = 'no';
+    cfgtmp.avgoverrpt = 'no';
+    cfgtmp.avgoverfreq = 'yes';
+
+    cfgtmp.frequency = [12, 30];
+    TF = ft_selectdata(cfgtmp, TF);
+end
+
+%% Flag artifacts in each trial for each channel
+
+% add columns for each channel
+% get artifacts from artifacts table that pertain to each channel
+for ich = 1:length(D.label)
+    ch_name = D.label{ich}; 
+%         mtch(cellfun(@isempty, mtch)) = {''};
+%     mtch = regexp('bad_ch-ecog_l02', 'bad_ch-(?<ch_name>\w*)', 'names');
+%         mtch = regexp(epoch.Properties.VariableNames, '(?<=bad_ch-)\w*', 'match'); % lookbehind
+
+%     ivars = cellfun(@(s)contains(ch_name, s), mtch);
+%     ch_artifacts = artifacts(contains(ch_name, artifacts.channel), :);
+    idxs_artifacts = cellfun(@(s) contains(ch_name, s), artifacts.channel);
+    ch_artifacts = artifacts(idxs_artifacts, :); 
+
+    epoch = bml_annot_coverage([], ch_artifacts, epoch); 
+    epoch.(['bad_ch-' ch_name]) = epoch.coverage > 0; epoch.coverage = []; 
+
+%     epoch.(['bad_ch-' ch_name]) = any(epoch{:, ivars}, 2); 
+end
+
+
+% after re-referencing, we need to update the epoch with artifacts 
+varnames = epoch.Properties.VariableNames; 
+if ismember('bad_ch-macro_L_CA', varnames)
+    epoch.(['bad_ch-macro_L_CA']) = any(epoch{:, contains(varnames, 'macro_L')}, 2);
+end
+
+
+% 2024 12 08 PLB: this was an old way of coding artifacts
+% if values for an epoch are all zero, eliminate it with the bad_ch- column
+% missing_trials = squeeze(sum(sum(TF.powspctrm,4,'omitnan'),3)) < eps;
+
+
+% for ich = 1:length(TF.label)
+%     ch_name = TF.label{ich};
+%     epoch.(['bad_ch-', ch_name]) = missing_trials(:,ich); 
+% end
+
+
+%% Build behavioral features and append to raw object
+
+% build template 
+[ntrials, nchan, nfreq, nsamp] = size(TF.powspctrm);
+D_template = []; 
+D_template.label = {'time_GTC'}; 
+D_template.time = arrayfun(@(x) {TF.time + x}, epoch.t0)';
+D_template.trial = D_template.time;
+
+cfgbeh = [];  cfgbeh.template = D_template;  
+
+D_beh_features = {}; 
+
+cfgbeh.label = {'beh_sentence'};
+tmp = sentences; tmp.starts = tmp.starts; tmp.ends = tmp.ends; 
+raw_tmp = bml_annot2raw_dev(cfgbeh, tmp); 
+D_beh_features{end+1} = raw_tmp; 
+
+cfgbeh.label = {'beh_sentence_on'};
+tmp = sentences; 
+tmp.duration(:) = 0.01; tmp.ends = tmp.starts + tmp.duration; 
+raw_tmp = bml_annot2raw_dev(cfgbeh, tmp); 
+D_beh_features{end+1} = raw_tmp; 
+
+cfgbeh.label = {'beh_itg'};
+tmp = trials; tmp.starts = tmp.itg_onset; tmp.ends = tmp.starts + tmp.itg_duration; 
+raw_tmp = bml_annot2raw_dev(cfgbeh, tmp); 
+D_beh_features{end+1} = raw_tmp; 
+
+cfgbeh.label = {'beh_audio'};
+tmp = trials; tmp.starts = tmp.audio_onset; tmp.ends = tmp.starts + tmp.audio_duration; 
+raw_tmp = bml_annot2raw_dev(cfgbeh, tmp); 
+D_beh_features{end+1} = raw_tmp; 
+
+cfgbeh.label = {'beh_noise_type'};
+tmp = trials; tmp = tmp(tmp.noise_type==1, :);
+tmp.starts = tmp.starts_trials; tmp.ends = tmp.ends_trials; 
+tmp.ends = tmp.ends + tmp.itg_duration; 
+tmp.duration = tmp.ends - tmp.starts; 
+raw_tmp = bml_annot2raw_dev(cfgbeh, tmp); 
+D_beh_features{end+1} = raw_tmp; 
+
+cfgbeh.label = {'beh_acoustic_edge_rising'};
+tmp = acoustic_edges; tmp = tmp(tmp.acoustic_event_type=="edge-rising", :); 
+tmp.duration(:) = 0.01; tmp.ends = tmp.starts + tmp.duration; 
+raw_tmp = bml_annot2raw_dev(cfgbeh, tmp); 
+D_beh_features{end+1} = raw_tmp; 
+
+% pitch and intensity
+raw_tmp = bml_conform_to(D_template, pitch); 
+D_beh_features{end+1} = raw_tmp; 
+
+% run id and trial id from epoch
+cfgbeh.value_type = 'column'; 
+cfgbeh.label = 'trial_id'; 
+cfgbeh.value_colname = cfgbeh.label; 
+tmp = trials; tmp.starts = tmp.starts - circshift(tmp.itg_duration, 1); 
+D_beh_features{end+1} = bml_annot2raw_dev(cfgbeh, tmp);
+tmp = epoch; 
+cfgbeh.label = 'run_id'; 
+cfgbeh.value_colname = cfgbeh.label; 
+D_beh_features{end+1} = bml_annot2raw_dev(cfgbeh, tmp);
+
+% time vector with timelock time coords
+Dtmp = []; 
+Dtmp.label = {'time_t0'}; 
+Dtmp.time = arrayfun(@(x) {TF.time + 0}, epoch.t0)';
+Dtmp.trial = Dtmp.time; 
+D_beh_features{end+1} = Dtmp; 
+
+% time vector with global time coords
+D_beh_features{end+1} = D_template; 
+
+
+TF_beh = TF; 
+for ibeh = 1:length(D_beh_features)
+    
+    D_beh = D_beh_features{ibeh};
+    
+    % D_sentences.time = repmat({TF.time}, 1, ntrials); 
+    D_beh.time = TF.time; 
+    
+    % reshape into powspectrum for compatibility with TF
+    X_chantimetrial = cat(3, D_beh.trial{:}); 
+    X_chantimetrialfreq = repmat(X_chantimetrial, 1, 1, 1, nfreq); 
+    % % tmp3 = (reshape(tmp2, nsamp, 1, nfreq, ntrials)); 
+    D_beh.powspctrm = permute(X_chantimetrialfreq, [3 1 4 2]);
+    % housekeeping on the TF object
+    D_beh = rmfield(D_beh, 'trial'); 
+    D_beh.freq = TF.freq; 
+    
+    cfg = []; cfg.appenddim = 'chan';
+    TF_beh = ft_appendfreq(cfg, TF_beh, D_beh);
+end 
+
+
+%% testing code--visualize signals
+[~, ifreq] = min(abs(TF.freq - 135)); 
+ich = find(TF_beh.label=="beh_audio"); assert(length(ich)==1); 
+% [~, itrial] = sort(epoch.ends_trials - epoch.starts_trials); 
+itrial = 1:ntrials; 
+% close all; ecog_L234
+% close all; 
+figure('position', [-17   366   560   420]); 
+% imagesc(TF_beh.time, 1:ntrials, log10(squeeze(TF_beh.powspctrm(itrial, ich, ifreq, :)).^2) ); 
+d = (squeeze(TF_beh.powspctrm(itrial, ich, ifreq, :))); 
+% d(d==0)=nan; d = d - min(d, [], 2, 'omitnan'); 
+imagesc(TF_beh.time, 1:ntrials, d ); 
+colorbar; title(TF_beh.label(ich), 'interpreter', 'none');
+% caxis([-1 2]); grid on; s
+% hg
+
+% allAxes = findall(0,'type','axes');
+% linkaxes(allAxes(1:3), 'yx')
+
+%% Save generated data to disk 
+TF = TF_beh; % added 2025 06 23; previously we didn't save behavioral data
+TF.baseline = tbasel; 
+
+% chs_str = strjoin(regexprep(chs_oi,'[^a-zA-Z\s]',''), '-');
+chs_str = CHANNELS_SUBSET_NAME; % added 2025 04 24 passed as function argument
+save_dir = [PATH_NEWDATA filesep 'tlock-' TLOCK '_chs-' chs_str]; mkdir(save_dir); 
+save_path = [save_dir filesep bml_bids_basefname(SUBJECT, SESSION, TASK) '_tlock-' TLOCK '_TFR'];
+save(save_path,'TF','epoch','-v7.3');
+
+mfilePath = mfilename('fullpath');
+copyfile([mfilePath '.m'], [save_path '_READONLY_' char(datetime('now')) '.txt']); 
+
+
+%% Flatten TFR into a table for statistics
+
+% cfg = []; 
+% cfg.channel = {'macro_*', 'time_GTC', 'beh_noise-type', 'beh_sentence'}; 
+% TF_beh_subset = ft_selectdata(cfg, TF_beh); 
+
+TF_beh_subset = TF_beh;
+[ntrials, nchan_beh, nfreq, nsamp] = size(TF_beh_subset.powspctrm);
+
+assert(nfreq==1, "Code hasn't been tested for time-frequency objects with multiple frequencies.") 
+X = TF_beh_subset.powspctrm; 
+X = permute(X, [4 1 3 2]); 
+X = reshape(X, ntrials*nsamp, nfreq*nchan_beh); 
+X = X(:, 1:nchan_beh); % behavioral features are replicated for frequencies  
+% T = table(X, 'VariableNames', TF_beh_subset.label'); 
+% T = table(X); 
+T = array2table(X); 
+T.Properties.VariableNames = TF_beh_subset.label; 
+T.cfg_tfr_id(:) = string(CFG_TFR.id); 
+T.subject_id(:) = string(SUBJECT); 
+parquetwrite(save_path, T)
+% writetable(T, './data/parquettest.xlsx')
+% writetable(T, './data/parquettest.csv')
+
+% write config file
+fid = fopen([save_path '.json'],'w');
+fprintf(fid,'%s',jsonencode(CFG_TFR)); fclose(fid);
+
+
+%% testing--visualization
+% close all; figure('position', [-17   366   560   420]); 
+% % imagesc( log10(squeeze(TF_beh.powspctrm(:, ich, ifreq, :)).^2) ); 
+% imagesc(X); 
+% colorbar; title(TF_beh.label(ich), 'interpreter', 'none');
+% caxis([0 1]); grid on; shg
+
+
+
+
+
+
+
+
+
+
+

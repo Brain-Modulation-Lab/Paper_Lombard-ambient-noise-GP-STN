@@ -1,0 +1,24 @@
+subject_id	nc_LFP	ns_LFP	nr_LFP	nt_LFP	age	sex	diagnosis	target	nc_SU	ns_SU	nr_SU	nt_SU	preop_updrs_off	preop_updrs_on	handedness
+DM1002	9	1	3	109	82	male	PD	STN	6	1	3	150	49	43	Left
+DM1003	9	1	3	182	59	male	PD	STN	7	1	2	158	n/a	NA	Left
+DM1005	3	1	1	75	16	female	Dys	GPi	7	1	1	79	n/a	n/a	Right
+DM1006	6	1	2	124	61	female	Dys	GPi	5	1	2	108	n/a	n/a	Right
+DM1008	3	1	1	68	61	female	Dys	GPi	NA	NA	NA	NA	n/a	n/a	Left
+DM1011	4	1	2	143	67	female	PD	STN	6	1	2	156	39	25	Right
+DM1012	3	1	1	47	73	male	PD	GPi	1	1	1	65	56	42	Right
+DM1013	3	1	1	46	52	male	PD	GPi	2	1	1	10	20	10	Right
+DM1014	1	1	1	18	58	male	PD	STN	2	1	1	33	35	16	Right
+DM1015	4	1	2	144	64	male	PD	GPi	2	1	1	31	47	25	Right
+DM1017	2	1	1	46	53	male	PD	GPi	NA	NA	NA	NA	10	2	Right
+DM1018	2	1	1	63	74	male	PD	STN	2	1	1	79	45	n/a	Right
+DM1019	9	1	3	142	74	female	PD	GPi	12	1	2	119	n/a	NA	Right
+DM1020	3	1	1	66	77	male	PD	STN	5	1	1	28	54	34	Right
+DM1021	3	1	1	48	59	male	PD	GPi	1	1	1	15	43	23	Right
+DM1022	6	1	2	158	55	male	PD	STN	3	1	2	75	48	17	Right
+DM1023	6	1	2	112	62	male	PD	GPi	2	1	2	55	45	31	Right
+DM1027	6	1	2	158	69	male	PD & ET	STN	5	1	2	156	41	8	Right
+DM1028	3	1	1	79	59	female	PD	GPi	3	1	1	79	NA	NA	Left
+DM1029	6	1	2	158	68	male	PD	STN	5	1	2	109	41	27	Right
+DM1033	3	1	1	77	62	male	PD	STN	2	1	1	59	57	26	Right
+DM1034	3	1	1	57	79	male	PD	STN	3	1	1	74	NA	NA	Right
+DM1037	3	1	1	79	69	male	PD	STN	2	1	1	55	34	8	Right

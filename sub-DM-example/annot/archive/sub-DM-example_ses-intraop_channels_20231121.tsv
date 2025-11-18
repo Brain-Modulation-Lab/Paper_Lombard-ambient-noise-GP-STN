@@ -1,0 +1,193 @@
+onset	duration	name	type	units	filetype	channel	connector	port	description	sampling_freq	low_cutoff	high_cutoff	notch	status	status_description	resolution_in_units	acquisition_reference
+61870	3029	ecog_L101	ECOG	uV	trellis.nf6	hifreq 1	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L102	ECOG	uV	trellis.nf6	hifreq 2	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L103	ECOG	uV	trellis.nf6	hifreq 3	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L104	ECOG	uV	trellis.nf6	hifreq 4	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L105	ECOG	uV	trellis.nf6	hifreq 5	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L106	ECOG	uV	trellis.nf6	hifreq 6	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L107	ECOG	uV	trellis.nf6	hifreq 7	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L108	ECOG	uV	trellis.nf6	hifreq 8	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L109	ECOG	uV	trellis.nf6	hifreq 9	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L110	ECOG	uV	trellis.nf6	hifreq 10	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L111	ECOG	uV	trellis.nf6	hifreq 11	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L112	ECOG	uV	trellis.nf6	hifreq 12	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L113	ECOG	uV	trellis.nf6	hifreq 13	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L114	ECOG	uV	trellis.nf6	hifreq 14	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L115	ECOG	uV	trellis.nf6	hifreq 15	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L116	ECOG	uV	trellis.nf6	hifreq 16	1	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L117	ECOG	uV	trellis.nf6	hifreq 17	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L118	ECOG	uV	trellis.nf6	hifreq 18	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L119	ECOG	uV	trellis.nf6	hifreq 19	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L120	ECOG	uV	trellis.nf6	hifreq 20	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L121	ECOG	uV	trellis.nf6	hifreq 21	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L122	ECOG	uV	trellis.nf6	hifreq 22	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L123	ECOG	uV	trellis.nf6	hifreq 23	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L124	ECOG	uV	trellis.nf6	hifreq 24	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L125	ECOG	uV	trellis.nf6	hifreq 25	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L126	ECOG	uV	trellis.nf6	hifreq 26	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L127	ECOG	uV	trellis.nf6	hifreq 27	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L128	ECOG	uV	trellis.nf6	hifreq 28	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L129	ECOG	uV	trellis.nf6	hifreq 29	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L130	ECOG	uV	trellis.nf6	hifreq 30	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L131	ECOG	uV	trellis.nf6	hifreq 31	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L132	ECOG	uV	trellis.nf6	hifreq 32	2	A1		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L133	ECOG	uV	trellis.nf6	hifreq 33	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L134	ECOG	uV	trellis.nf6	hifreq 34	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L135	ECOG	uV	trellis.nf6	hifreq 35	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L136	ECOG	uV	trellis.nf6	hifreq 36	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L137	ECOG	uV	trellis.nf6	hifreq 37	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L138	ECOG	uV	trellis.nf6	hifreq 38	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L139	ECOG	uV	trellis.nf6	hifreq 39	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L140	ECOG	uV	trellis.nf6	hifreq 40	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L141	ECOG	uV	trellis.nf6	hifreq 41	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L142	ECOG	uV	trellis.nf6	hifreq 42	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L143	ECOG	uV	trellis.nf6	hifreq 43	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L144	ECOG	uV	trellis.nf6	hifreq 44	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L145	ECOG	uV	trellis.nf6	hifreq 45	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L146	ECOG	uV	trellis.nf6	hifreq 46	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L147	ECOG	uV	trellis.nf6	hifreq 47	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L148	ECOG	uV	trellis.nf6	hifreq 48	3	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L149	ECOG	uV	trellis.nf6	hifreq 49	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L150	ECOG	uV	trellis.nf6	hifreq 50	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L151	ECOG	uV	trellis.nf6	hifreq 51	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L152	ECOG	uV	trellis.nf6	hifreq 52	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L153	ECOG	uV	trellis.nf6	hifreq 53	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L154	ECOG	uV	trellis.nf6	hifreq 54	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L155	ECOG	uV	trellis.nf6	hifreq 55	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L156	ECOG	uV	trellis.nf6	hifreq 56	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L157	ECOG	uV	trellis.nf6	hifreq 57	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L158	ECOG	uV	trellis.nf6	hifreq 58	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L159	ECOG	uV	trellis.nf6	hifreq 59	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L160	ECOG	uV	trellis.nf6	hifreq 60	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L161	ECOG	uV	trellis.nf6	hifreq 61	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L162	ECOG	uV	trellis.nf6	hifreq 62	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L163	ECOG	uV	trellis.nf6	hifreq 63	4	A2		7500	0	500	0			0.022	dura_1
+61870	3029	v0_A232	OTHER	uV	trellis.nf6	hifreq 64	NaN	A2		7500	0	500	0			0.022	dura_1
+61870	3029	ecog_L201	ECOG	uV	trellis.nf6	hifreq 129	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L202	ECOG	uV	trellis.nf6	hifreq 130	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L203	ECOG	uV	trellis.nf6	hifreq 131	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L204	ECOG	uV	trellis.nf6	hifreq 132	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L205	ECOG	uV	trellis.nf6	hifreq 133	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L206	ECOG	uV	trellis.nf6	hifreq 134	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L207	ECOG	uV	trellis.nf6	hifreq 135	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L208	ECOG	uV	trellis.nf6	hifreq 136	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L209	ECOG	uV	trellis.nf6	hifreq 137	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L210	ECOG	uV	trellis.nf6	hifreq 138	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L211	ECOG	uV	trellis.nf6	hifreq 139	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L212	ECOG	uV	trellis.nf6	hifreq 140	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L213	ECOG	uV	trellis.nf6	hifreq 141	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L214	ECOG	uV	trellis.nf6	hifreq 142	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L215	ECOG	uV	trellis.nf6	hifreq 143	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L216	ECOG	uV	trellis.nf6	hifreq 144	5	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L217	ECOG	uV	trellis.nf6	hifreq 145	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L218	ECOG	uV	trellis.nf6	hifreq 146	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L219	ECOG	uV	trellis.nf6	hifreq 147	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L220	ECOG	uV	trellis.nf6	hifreq 148	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L221	ECOG	uV	trellis.nf6	hifreq 149	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L222	ECOG	uV	trellis.nf6	hifreq 150	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L223	ECOG	uV	trellis.nf6	hifreq 151	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L224	ECOG	uV	trellis.nf6	hifreq 152	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L225	ECOG	uV	trellis.nf6	hifreq 153	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L226	ECOG	uV	trellis.nf6	hifreq 154	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L227	ECOG	uV	trellis.nf6	hifreq 155	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L228	ECOG	uV	trellis.nf6	hifreq 156	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L229	ECOG	uV	trellis.nf6	hifreq 157	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L230	ECOG	uV	trellis.nf6	hifreq 158	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L231	ECOG	uV	trellis.nf6	hifreq 159	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L232	ECOG	uV	trellis.nf6	hifreq 160	6	B1		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L233	ECOG	uV	trellis.nf6	hifreq 161	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L234	ECOG	uV	trellis.nf6	hifreq 162	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L235	ECOG	uV	trellis.nf6	hifreq 163	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L236	ECOG	uV	trellis.nf6	hifreq 164	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L237	ECOG	uV	trellis.nf6	hifreq 165	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L238	ECOG	uV	trellis.nf6	hifreq 166	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L239	ECOG	uV	trellis.nf6	hifreq 167	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L240	ECOG	uV	trellis.nf6	hifreq 168	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L241	ECOG	uV	trellis.nf6	hifreq 169	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L242	ECOG	uV	trellis.nf6	hifreq 170	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L243	ECOG	uV	trellis.nf6	hifreq 171	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L244	ECOG	uV	trellis.nf6	hifreq 172	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L245	ECOG	uV	trellis.nf6	hifreq 173	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L246	ECOG	uV	trellis.nf6	hifreq 174	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L247	ECOG	uV	trellis.nf6	hifreq 175	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L248	ECOG	uV	trellis.nf6	hifreq 176	7	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L249	ECOG	uV	trellis.nf6	hifreq 177	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L250	ECOG	uV	trellis.nf6	hifreq 178	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L251	ECOG	uV	trellis.nf6	hifreq 179	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L252	ECOG	uV	trellis.nf6	hifreq 180	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L253	ECOG	uV	trellis.nf6	hifreq 181	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L254	ECOG	uV	trellis.nf6	hifreq 182	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L255	ECOG	uV	trellis.nf6	hifreq 183	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L256	ECOG	uV	trellis.nf6	hifreq 184	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L257	ECOG	uV	trellis.nf6	hifreq 185	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L258	ECOG	uV	trellis.nf6	hifreq 186	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L259	ECOG	uV	trellis.nf6	hifreq 187	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L260	ECOG	uV	trellis.nf6	hifreq 188	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L261	ECOG	uV	trellis.nf6	hifreq 189	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L262	ECOG	uV	trellis.nf6	hifreq 190	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	ecog_L263	ECOG	uV	trellis.nf6	hifreq 191	8	B2		7500	0	500	0			0.022	dura_2
+61870	3029	v0_B232	OTHER	uV	trellis.nf6	hifreq 192	NaN	B2		7500	0	500	0			0.022	dura_2
+61870	3029	dbs_L1	DBS	uV	trellis.nf6	hifreq 257	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_L2A	DBS	uV	trellis.nf6	hifreq 258	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_L2B	DBS	uV	trellis.nf6	hifreq 259	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_L2C	DBS	uV	trellis.nf6	hifreq 260	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_L3A	DBS	uV	trellis.nf6	hifreq 261	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_L3B	DBS	uV	trellis.nf6	hifreq 262	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_L3C	DBS	uV	trellis.nf6	hifreq 263	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_L4	DBS	uV	trellis.nf6	hifreq 264	9	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C109	OTHER	uV	trellis.nf6	hifreq 265	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C110	OTHER	uV	trellis.nf6	hifreq 266	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C111	OTHER	uV	trellis.nf6	hifreq 267	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C112	OTHER	uV	trellis.nf6	hifreq 268	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C113	OTHER	uV	trellis.nf6	hifreq 269	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C114	OTHER	uV	trellis.nf6	hifreq 270	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C115	OTHER	uV	trellis.nf6	hifreq 271	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C116	OTHER	uV	trellis.nf6	hifreq 272	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R1	DBS	uV	trellis.nf6	hifreq 273	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R2A	DBS	uV	trellis.nf6	hifreq 274	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R2B	DBS	uV	trellis.nf6	hifreq 275	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R2C	DBS	uV	trellis.nf6	hifreq 276	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R3A	DBS	uV	trellis.nf6	hifreq 277	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R3B	DBS	uV	trellis.nf6	hifreq 278	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R3C	DBS	uV	trellis.nf6	hifreq 279	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	dbs_R4	DBS	uV	trellis.nf6	hifreq 280	10	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C125	OTHER	uV	trellis.nf6	hifreq 281	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C126	OTHER	uV	trellis.nf6	hifreq 282	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C127	OTHER	uV	trellis.nf6	hifreq 283	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C128	OTHER	uV	trellis.nf6	hifreq 284	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C129	OTHER	uV	trellis.nf6	hifreq 285	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C130	OTHER	uV	trellis.nf6	hifreq 286	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C131	OTHER	uV	trellis.nf6	hifreq 287	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	v0_C132	OTHER	uV	trellis.nf6	hifreq 288	NaN	C1		7500	0	500	0			0.022	dura_1
+61870	3029	resp_1	MISC	uV	trellis.nf6	hifreq 385	NaN	D1		7500	0	300	0			0.022	bipolar
+61870	3029	v0_D102	OTHER	uV	trellis.nf6	hifreq 386	NaN	D1		7500	0	300	0			0.022	bipolar
+61870	3029	pd_1	PD	mV	trellis.ns5	analog 1	NaN	AI		30000	0	0	NaN			0.15	ground
+61870	3029	audioR_s	AUDIO	mV	trellis.ns5	analog 2	NaN	AI		30000	0	0	NaN			0.15	ground
+61870	3029	v0_AI3	OTHER	mV	trellis.ns5	analog 3	NaN	AI		30000	0	0	NaN			0.15	ground
+61870	3029	v0_AI4	OTHER	mV	trellis.ns5	analog 4	NaN	AI		30000	0	0	NaN			0.15	ground
+61870	3029	vibr_1	MISC	mV	trellis.ns5	analog 5	NaN	AI		30000	0	0	NaN			0.15	ground
+61870	3029	v0_AI6	OTHER	mV	trellis.ns5	analog 6	NaN	AI		30000	0	0	NaN			0.15	ground
+61870	3029	audioR_p	AUDIO	mV	trellis.ns5	analog 29	NaN	AI		30000	0	0	NaN			0.15	ground
+61870	3029	audioR_a	AUDIO	mV	trellis.ns5	analog 30	NaN	AI		30000	0	0	NaN			0.15	ground
+0	70000	audioAO_s	AUDIO	uV	neuroomega.mat	CANALOG_IN_1	NaN			2750	0	0	NaN			2441	ground
+0	70000	microLFP_LXXX	MICRO	uV	neuroomega.mat	CLFP_01	NaN			1375	0	0	NaN			1.907	cannula
+0	70000	microLFP_LXXX	MICRO	uV	neuroomega.mat	CLFP_02	NaN			1375	0	0	NaN			1.907	cannula
+0	70000	microLFP_LXXX	MICRO	uV	neuroomega.mat	CLFP_03	NaN			1375	0	0	NaN			1.907	cannula
+0	70000	macroHP_LXXX	SEEG	uV	neuroomega.mat	CMacro_LFP_01	NaN			1375	0	0	NaN			1.907	cannula
+0	70000	macroHP_LXXX	SEEG	uV	neuroomega.mat	CMacro_LFP_02	NaN			1375	0	0	NaN			1.907	cannula
+0	70000	macroHP_LXXX	SEEG	uV	neuroomega.mat	CMacro_LFP_03	NaN			1375	0	0	NaN			1.907	cannula
+0	70000	macro_LXXX	SEEG	uV	neuroomega.mat	CMacro_RAW_01	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	macro_LXXX	SEEG	uV	neuroomega.mat	CMacro_RAW_02	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	macro_LXXX	SEEG	uV	neuroomega.mat	CMacro_RAW_03	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	micro_LXXX	MICRO	uV	neuroomega.mat	CRAW_01	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	micro_LXXX	MICRO	uV	neuroomega.mat	CRAW_02	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	micro_LXXX	MICRO	uV	neuroomega.mat	CRAW_03	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	microHP_LXXX	MICRO	uV	neuroomega.mat	CSPK_01	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	microHP_LXXX	MICRO	uV	neuroomega.mat	CSPK_02	NaN			44000	0	0	NaN			1.907	cannula
+0	70000	microHP_LXXX	MICRO	uV	neuroomega.mat	CSPK_03	NaN			44000	0	0	NaN			1.907	cannula
+61870	3029	audio_a	AUDIO	unknown	audio.wav	ambientmic	NaN	ZOOMH6		44100	0	0	NaN			NaN	ground
+61870	3029	audioAEC_a	AUDIO	unknown	audio.wav	ambientmicaec	NaN	ZOOMH6		44100	0	0	NaN			NaN	ground
+61870	3029	audio_p	AUDIO	unknown	audio.wav	directionalmic	NaN	ZOOMH6		44100	0	0	NaN			NaN	ground
+61870	3029	audioAEC_p	AUDIO	unknown	audio.wav	directionalmicaec	NaN	ZOOMH6		44100	0	0	NaN			NaN	ground
+61870	3029	sync_d	AUDIO	unknown	audio.wav	events	NaN	ZOOMH6		44100	0	0	NaN			NaN	ground
+61870	3029	audio_s	AUDIO	unknown	audio.wav	speaker	NaN	ZOOMH6		44100	0	0	NaN			NaN	ground

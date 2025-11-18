@@ -1,0 +1,4 @@
+task	run	filetype	name	landmark_time	landmark_comment
+lombard	2	trellis.ns5	sub-DM10XX_ses-intraop_datafile0001.ns5	1487.08	
+lombard	2	audio.wav	sub-DM10XX_ses-intraop_task-lombard_run-02_recording-speaker_stim.wav	28.39	
+lombard	2	neuroomega.mat	LT1D0.936F000X.mat	125.41	

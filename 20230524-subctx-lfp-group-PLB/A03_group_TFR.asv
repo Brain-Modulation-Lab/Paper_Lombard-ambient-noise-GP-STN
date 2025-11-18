@@ -1,0 +1,1977 @@
+clear all; close all; 
+
+TASK = 'lombard'; 
+SESSION = 'intraop'; 
+
+if ispc
+    PATH_DBSROOT = 'Y:/DBS'; 
+else 
+    PATH_DBSROOT = '/Volumes/Nexus4/DBS'; 
+end
+PATH_ANALYSIS = [PATH_DBSROOT filesep 'groupanalyses/task-lombard/20230524-subctx-lfp-group-PLB'];
+cd(PATH_ANALYSIS); 
+ 
+% TLOCK = 'sentence-on'; 
+% TOI_PLOT = [-1 3];
+% TBASEL = [-3.9 -3.1]; % defined in the previous step--MUST match that step (A03)
+
+% TLOCK = 'sentence-off'; 
+% TOI_PLOT = [-4 1.75];
+% TBASEL = [0.25 1.25] + 0.1*[1 -1]; % defined in the previous step--MUST match that step (A03)
+
+
+% TLOCK = 'word-on'; 
+% TOI_PLOT = [-0.5 0.5];
+% TBASEL = [-0.4 0.4]; % defined in the previous step--MUST match that step (A03)
+
+
+TLOCK = 'audio-on'; 
+TOI_PLOT = [-2 6];
+TBASEL = [-0.9 -0.1]; % defined in the previous step--MUST match that step (A03)
+
+% TLOCK = 'word-off'; 
+% TOI_PLOT = [-2 2];
+% TBASEL = [-3.9 -3.1]; % defined in the previous step--MUST match that step (A03)
+
+% TLOCK = 'audio-on'; 
+% TOI_PLOT = [-2 6];
+% TBASEL = [-1 0]; % defined in the previous step--MUST match that step (A03)
+
+
+% TLOCK = 'acoustic-edge-rising'; 
+% TOI_PLOT = [-0.5 0.5];
+% TBASEL = [-0.5 0.5]; % defined in the previous step--MUST match that step (A03)
+
+
+%% SET PATH_DATA MANUALLY
+% PATH_DATA = [PATH_ANALYSIS filesep ...
+%                 'data' filesep  'tfr-multitaperdpss' filesep ...
+%                 'tlock-' TLOCK '_chs-macro-dbs-micro-audio']; 
+
+% PATH_DATA = [PATH_ANALYSIS filesep ...
+%                 'data' filesep  'tfr-multitaperdpss' filesep ...
+%                 'tlock-' TLOCK '_chs-manual-select']; 
+
+% PATH_DATA = [PATH_ANALYSIS filesep ...
+%                 'data' filesep ...
+%                 'tlock-' TLOCK '_chs-macro-ecogL-audio']; 
+
+% PATH_DATA = [PATH_ANALYSIS filesep ...
+%                 'data' filesep ...
+%                 'tlock-' TLOCK '_chs-VIM-DBS-bipolar-TFR']; 
+
+% SUBSET = ['tlock-' TLOCK '_chs-DBS-bipolar-allways-TFR']; 
+% PATH_DATA = [PATH_ANALYSIS filesep ...
+%                 'data' filesep ...
+%                 SUBSET]; 
+
+SUBSET = ['tlock-' TLOCK '_chs-ecog-1001-1039']; 
+PATH_DATA = [PATH_ANALYSIS filesep ...
+                'data' filesep ...
+                SUBSET]; 
+
+%% MORE SETUP - channels, electrodes
+
+PATH_FIG = [PATH_ANALYSIS '/fig'];
+PATH_NEWDATA = [PATH_ANALYSIS '/data'];
+
+% CHANNEL = 'macro_Lc';
+% CHANNEL = 'macro_Ll-macro_Lc';
+% CHANNELS = {'macro_Lc', 'macro_Ll', 'macro_Lm', 'macro_Lp', 'ecog_'}; 
+% CHANNELS = {'dbs'}; 
+CHANNELS = {'macro', 'ecog', 'audio'}; 
+
+
+SUBJECTS_META = bml_annot_read_tsv([PATH_DBSROOT filesep '/participants.tsv']);
+
+COLORS = bml_annot_read_tsv(['../20230602-metadata-and-groupdata-PLB/lombard_colors.tsv']);
+tmp = []; 
+for ic = 1:height(COLORS); tmp.(COLORS.name{ic}) = hex2rgb(COLORS.hex{ic}); end
+COLORS = tmp; 
+
+% this must be generated 
+% sentences_acoustics = bml_annot_read_tsv('A02b_produced-sentences-acoustics-all-subj-DM1001-DM1020.tsv'); 
+
+channel_summary_max_bga = bml_annot_read_tsv('./data/A04_channel_summary_max_bga_speech.tsv'); 
+
+electrodes = bml_annot_read_tsv([PATH_DBSROOT '\groupanalyses\task-lombard\20230328-subctx-ctx-group-coverage-PLB\A02b_electrodes-all-subj-DM1001-DM1039-with-lombard-run-id.tsv']);
+
+%% Load subcortical atlases for plotting electrode locations
+% Load MNI DISTAL atlas subcortical surfaces to plot
+ld = load([PATH_DBSROOT '\groupanalyses\task-lombard\20230328-subctx-ctx-group-coverage-PLB\utils\MNI09NLIN_DISTAL_GPi_STN_left_facesvertices.mat']);
+SURFACE_DATA = [];
+SURFACE_DATA.stn.v = ld.STN_left_vertices;
+SURFACE_DATA.stn.f = ld.STN_left_faces;
+SURFACE_DATA.gpi.v = ld.GPi_left_vertices;
+SURFACE_DATA.gpi.f = ld.GPi_left_faces;
+SURFACE_DATA.gpe.v = ld.GPe_left_vertices;
+SURFACE_DATA.gpe.f = ld.GPe_left_faces;
+views = [];
+views.posterior = ld.views.posterior; % save new view
+views.medial = ld.views.medial; % save new view views.medial=ea_view();
+
+
+%% Build loaded subjects' metadata
+% subject_varname = 'subject_id';  % could also be subject_id, sub
+
+% subjects = table();
+% subjects.subject_id =  cellfun(@(e) unique(e.(subject_varname)), epochs)'; 
+% subjects = join(subjects, SUBJECTS_META, 'keys', 'subject_id'); 
+SUBJECTS_META.is_stn = contains(SUBJECTS_META.dbs_target, 'STN'); 
+SUBJECTS_META.is_gpi = contains(SUBJECTS_META.dbs_target, 'GPi'); 
+
+
+%% Define standard plotting cfg parameters, to be passed to the plotting
+% function
+cfg_plot = []; 
+
+cfg_plot.xlim = TOI_PLOT; 
+cfg_plot.xlabel = "Time [s] wrt " + TLOCK;
+cfg_plot.ylabel = 'Frequency [Hz]';
+
+cfg_plot.baseline = TBASEL;
+cfg_plot.baselinetype = 'db'; % zscore, db
+
+cfg_plot.zlim = [-3 3];
+
+% Construct events to plot
+event1 = struct('starts', 0, 'ends', 0, 'linestyle', '-'); % time zero
+event2 = struct('starts', TBASEL(1), 'ends', TBASEL(2), 'linestyle', '--');
+events = struct2table([event1 event2]);
+cfg_plot.events = events;
+
+% cfg_plot.channel = CHANNEL; 
+
+
+
+%% Load all TFR
+
+fnames = dir([PATH_DATA filesep '*TFR.mat']); 
+% fnames=fnames(~ismember({d.name},{'.','..'}));
+
+TFs = {}; 
+epochs = {}; 
+datatbl_subj = table(); 
+for isub = 1:length(fnames)
+    fname = fnames(isub).name; 
+
+    % TESTING
+%     if ~contains(fname, {'DM1022', 'DM1025', 'DM1026'}); continue; end
+    tmp = regexp(fname, 'sub-(DM[0-9]+)_', 'tokens');
+    
+
+    disp(['Loading: ' PATH_DATA filesep fnames(isub).name]); 
+    ld = load([PATH_DATA filesep fnames(isub).name]); 
+    datatbl_subj.epoch{isub} = ld.epoch;
+    datatbl_subj.TF{isub} = ld.TF;
+    datatbl_subj.subject_id{isub} = tmp{1}{1}; 
+end
+
+%% Unpack TFRs to run- and channel-wise FieldTrip objects
+
+datatbl_run = table(); 
+for isub = 1:height(datatbl_subj)
+    % TF_by_run
+    [grp, ia, ic] = unique(datatbl_subj.epoch{isub}(:, {'subject_id', 'run_id'}));
+
+    for irun = 1:height(grp)
+        cfg_tmp = []; 
+        cfg_tmp.trials = ic==irun; 
+
+        idx = height(datatbl_run); 
+        datatbl_run.TF{idx+1} = ft_selectdata(cfg_tmp, datatbl_subj.TF{isub});
+        datatbl_run.epoch{idx+1} = datatbl_subj.epoch{isub}(cfg_tmp.trials, :); 
+        datatbl_run.subject_id{idx+1} = datatbl_subj.subject_id{isub}; 
+        datatbl_run.run_id(idx+1) = datatbl_run.epoch{idx+1}.run_id(1); 
+    end    
+end
+
+
+% unpack to channel-wise fieldtrip objects
+datatbl_ch = table();
+for irun = 1:height(datatbl_run)
+    for ich = 1:length(datatbl_run.TF{irun}.label)
+        ch_name = datatbl_run.TF{irun}.label{ich};
+        
+        mask = false; 
+        for k = 1:length(CHANNELS); mask = mask | contains(ch_name, CHANNELS{k}); end
+        if ~mask; continue; end
+
+        cfg_tmp = [];
+        cfg_tmp.channel = ch_name;
+        if ismember(['bad_ch-' ch_name], datatbl_run.epoch{irun}.Properties.VariableNames)
+            cfg_tmp.trials = ~datatbl_run.epoch{irun}.(['bad_ch-' ch_name]); 
+        else 
+            cfg_tmp.trials = ones([height(datatbl_run.epoch{irun}) 1]);
+            warning(['Channel "bad_ch-' ch_name '" not found in artifact table'])
+        end
+        
+        if sum(cfg_tmp.trials) < 20; 
+            fprintf('Too few trials for %s-%s-%s \n', datatbl_run.subject_id{irun}, ...
+                                                  datatbl_run.run_id(irun), ...
+                                                  ch_name)
+            continue; 
+        end
+
+        idx = height(datatbl_ch);
+        datatbl_ch.TF{idx+1} = ft_selectdata(cfg_tmp, datatbl_run.TF{irun});
+        datatbl_ch.epoch{idx+1} = datatbl_run.epoch{irun}(cfg_tmp.trials, :);
+        datatbl_ch.subject_id{idx+1} = datatbl_run.subject_id{irun};
+        datatbl_ch.run_id(idx+1) = datatbl_run.epoch{irun}.run_id(1);
+        datatbl_ch.channel{idx+1} = ch_name; 
+    end
+end
+
+% %% Baseline, flatten out fieldtrip cell array into one huge TF 
+% % rows in TF correspond to rows in epoch
+% % this makes it much easier to filter trials for a number of different 
+% 
+% datatbl_ch = table(); 
+% epochs_by_run_by_ch = {}; 
+% for irun = 1:length(TFs_by_run)
+%     for ich = 1:length(TFs_by_run{irun}.label)
+%         cfg_tmp = []; 
+%         cfg_tmp.channel = TFs_by_run{irun}.label{ich}; 
+%         disp(cfg_tmp.channel); 
+% 
+%         TFs_by_run_by_ch{end+1} = ft_selectdata(cfg_tmp, TFs_by_run{irun});        
+%         TFs_by_run_by_ch{end}.label = {'na'};
+% 
+%         % go ahead and baseline
+%         cfg_tmp.baseline = TBASEL;
+%         cfg_tmp.baselinetype = cfg_plot.baselinetype; 
+%         TFs_by_run_by_ch{end} = ft_freqbaseline(cfg_tmp, TFs_by_run_by_ch{end});    
+% 
+%         epochtmp = epochs_by_run{irun}; 
+%         epochtmp.channel = repmat(string(cfg_tmp.channel), height(epochtmp), 1);
+%         epochtmp.bad = epochtmp.(['bad_ch-' cfg_tmp.channel]); 
+%         epochs_by_run_by_ch{end+1} = epochtmp; 
+% 
+%         %             TFs_by_run{end}.label = {'na'}; % we are giving up channel functionality 
+% % 
+% 
+% % 
+% %             epochtmp = epochs{isub}(cfg_tmp.trials, :); 
+% %             epochtmp.channel = repmat(cfg_tmp.channel, height(epochtmp), 1); 
+% %             epochs_by_run{end+1} = epochtmp;
+%     end
+% end 
+% 
+% TF_tmp = TFs_by_run_by_ch; 
+% epochs_tmp = epochs_by_run_by_ch; 
+% 
+% cfg = []; 
+% cfg.appenddim = 'rpt'; 
+% TF_all = ft_appendfreq(cfg, TF_tmp{:}); 
+% 
+% 
+% vois = {'subject_id', 'run_id', 'trial_id', 'noise_type', 'channel', 'bad'}; % ['bad_ch-' CHANNEL]}; 
+% epochs_all = cellfun(@(e) e(:, vois), epochs_tmp, 'UniformOutput', false); 
+% epochs_all = vertcat(epochs_all{:}); 
+% % epochs_all.curr_trials_filter = ~epochs_all.(['bad_ch-' CHANNEL]); 
+% % epochs_all = renamevars(epochs_all, 'sub', 'subject_id'); 
+% % epochs_all = join(epochs_all, SUBJECTS_META, 'keys', 'subject_id');
+% 
+% 
+% 
+% % filter out bad trials
+% % keepidxs = cellfun(@(x) ~isempty(x.powspctrm), TF_tmp); 
+% cfgtmp = []; 
+% cfgtmp.trials = ~epochs_all.bad; 
+% TF_all = ft_selectdata(cfgtmp, TF_all); 
+% epochs_all = epochs_all(cfgtmp.trials, :); 
+% 
+% % remove channels with fewer than 20 trials
+% id_vars = {'subject_id', 'run_id', 'channel'}; 
+% [grps, ~, idxs_grp] = unique(epochs_all(:, id_vars));
+% grps.count = splitapply(@length, epochs_all.subject_id, idxs_grp); 
+% grps_subset = grps(grps.count > 20, :);
+% grps_subset.count = []; 
+% 
+% cfgtmp = []; 
+% cfgtmp.trials = ismember(epochs_all(:, id_vars), grps_subset);
+% TF_all = ft_selectdata(cfgtmp, TF_all); 
+% epochs_all = epochs_all(cfgtmp.trials, :); 
+
+%% Widen epochs_all with important info from other tables
+datatbl_ch = join(datatbl_ch, SUBJECTS_META, 'keys', 'subject_id', 'RightVariables', {'is_stn', 'is_gpi'}); 
+
+% id_vars = {'subject_id', 'run_id','trial_id'}; 
+% epochs_all = join(epochs_all, sentences_acoustics, 'keys', id_vars, 'RightVariables', {'intensity_praat_prct'}); 
+
+
+%% Attempt to flatten out all data into trials x (time x frequency)
+
+% TFs_by_run = {}; 
+% epochs_by_run = {}; 
+% % for isub = 1:length(TFs)
+% for isub = 1:3
+%     % TF_by_run
+%     [grp, ia, ic] = unique(epochs{isub}(:, {'subject_id', 'run_id'}));
+% 
+%     for igrp = 1:height(grp)
+%         for ich = 1:length(TFs{isub}.label)
+%             cfg_tmp = [];
+%             cfg_tmp.trials = ic==igrp;
+%             cfg_tmp.channel = TFs{isub}.label{ich};
+% 
+%             TFs_by_run{end+1} = ft_selectdata(cfg_tmp, TFs{isub});
+%             TFs_by_run{end}.label = {'na'}; % we are giving up channel functionality 
+% 
+%             cfg_tmp = []; 
+%             cfg_tmp.baseline = TBASEL;
+%             cfg_tmp.baselinetype = 'db'; 
+%             TFs_byrun_lmbrd{irun} = ft_freqbaseline(cfg_tmp, TFs_byrun_lmbrd{irun});    
+% 
+% 
+%             epochtmp = epochs{isub}(cfg_tmp.trials, :); 
+%             epochtmp.channel = repmat(cfg_tmp.channel, height(epochtmp), 1); 
+%             epochs_by_run{end+1} = epochtmp;
+%         end
+%     end
+% end
+% 
+% % baseline data 
+% for irun = 1:length(TFs_byrun_lmbrd)
+%     cfg_tmp = []; 
+%     cfg_tmp.baseline = TBASEL;
+%     cfg_tmp.baselinetype = 'db'; 
+%     TFs_byrun_lmbrd{irun} = ft_freqbaseline(cfg_tmp, TFs_byrun_lmbrd{irun});    
+%     TFs_byrun_quiet{irun} = ft_freqbaseline(cfg_tmp, TFs_byrun_quiet{irun});
+% end
+% 
+% %
+% TF_tmp = TFs_by_run; 
+% keepidxs = cellfun(@(x) ~isempty(x.powspctrm), TF_tmp); 
+% TF_tmp = TF_tmp(keepidxs); 
+% % epochs_tmp = epochs(keepidxs); 
+% 
+% cfg = []; 
+% cfg.appenddim = 'rpt'; 
+% TF_all = ft_appendfreq(cfg, TF_tmp{:}); 
+
+
+% %% Concatenate TFs and epochs across all subjects, filter by channel
+% 
+% cfg = []; 
+% cfg.channel = CHANNEL;
+% cfg.frequency = [4 200]; 
+% TF_tmp = {}; 
+% for isub = 1:length(TFs)
+%     TF_tmp{isub} = ft_selectdata(cfg, TFs{isub});
+% end
+% 
+% keepidxs = cellfun(@(x) ~isempty(x.powspctrm), TF_tmp); 
+% TF_tmp = TF_tmp(keepidxs); 
+% epochs_tmp = epochs(keepidxs); 
+% 
+% cfg = []; 
+% cfg.appenddim = 'rpt'; 
+% TF_all = ft_appendfreq(cfg, TF_tmp{:}); 
+% 
+% % variables of interest from the epochs tables--only take variables that
+% % all tables definitely share
+% vois = {'sub', 'run_id', 'trial_id', 'noise_type', ['bad_ch-' CHANNEL]}; 
+% epochs_all = cellfun(@(e) e(:, vois), epochs_tmp, 'UniformOutput', false); 
+% epochs_all = vertcat(epochs_all{:}); 
+% epochs_all.curr_trials_filter = ~epochs_all.(['bad_ch-' CHANNEL]); 
+% epochs_all.subject_id = epochs_all.sub;
+% epochs_all = join(epochs_all, SUBJECTS_META, 'keys', 'subject_id');
+% 
+% 
+% % Excluded trials: 
+% numer = sum(~epochs_all.curr_trials_filter); 
+% denom = height(epochs_all); 
+% fprintf('%0.2f percent (%d/%d) trials excluded based on bad_channels\n', 100*numer/denom, numer, denom); 
+% 
+% % filter trials
+% cfg = [];
+% cfg.trials = epochs_all.curr_trials_filter; 
+% TF_all = ft_selectdata(cfg, TF_all);
+% epochs_all = epochs_all(cfg.trials, :);
+
+
+
+%% Prepare data by run-wise for Lombard-vs-Quiet
+% % This splits data into upper 2/3 Lombard and lower 2/3 fo rh 
+% id_vars = {'subject_id', 'run_id'};
+% [grps, ~, idxs_grp] = unique(epochs_all(:, id_vars));
+% 
+% grps = join(grps, channel_summary_max_bga, 'keys', id_vars, 'RightVariables', 'channel'); 
+% target_filter = 'is_gpi'; 
+% 
+% TFs_byrun_lmbrd = {}; 
+% epochs_byrun_lmbrd = {};
+% TFs_byrun_quiet = {}; 
+% epochs_byrun_quiet = {}; 
+% 
+% for ig = 1:height(grps)
+%     % disp(grps(ig, :)); 
+% 
+%     cfg_tmp = []; 
+%     cfg_tmp.trials = ig==idxs_grp & ...
+%                      ~epochs_all.noise_type & ...
+%                      strcmp(epochs_all.channel, grps.channel{ig}) & ...
+%                      epochs_all.intensity_praat_prct < 2/3 & ...
+%                      epochs_all.(target_filter); % & ...
+%     if sum(cfg_tmp.trials)==0, continue, end
+%     TFtmp = ft_selectdata(cfg_tmp, TF_all);
+%     TFtmp = ft_freqdescriptives([], TFtmp);
+%     TFs_byrun_quiet{end+1} = ft_freqbaseline(cfg_plot, TFtmp);
+%     epochs_byrun_quiet{end+1} = epochs_all(find(cfg_tmp.trials, 1), [id_vars 'channel']); 
+%     
+% 
+%     % testing: 
+%     epochs_all(cfg_tmp.trials, : )
+% 
+% 
+%     cfg_tmp = []; 
+%     cfg_tmp.trials = ig==idxs_grp & ...
+%                      epochs_all.noise_type & ...
+%                      strcmp(epochs_all.channel, grps.channel{ig}) & ...
+%                      epochs_all.intensity_praat_prct > 1/3 & ...
+%                      epochs_all.(target_filter); % & ...
+%     TFtmp = ft_selectdata(cfg_tmp, TF_all);
+%     TFtmp = ft_freqdescriptives([], TFtmp);
+%     TFs_byrun_lmbrd{end+1} = ft_freqbaseline(cfg_plot, TFtmp);
+%     epochs_byrun_lmbrd{end+1} = epochs_all(find(cfg_tmp.trials, 1), [id_vars 'channel']); 
+% 
+%     epochs_all(cfg_tmp.trials, : )
+% 
+% end
+
+%% Run statistics on grand average Lombard vs quiet
+% cfgtmp = []; 
+% cfgtmp.keepindividual = 'yes'; 
+% cfgtmp.latency = TOI_PLOT; 
+% TF_grandavg_quiet = ft_freqgrandaverage(cfgtmp, TFs_byrun_quiet{:}); 
+% TF_grandavg_lmbrd = ft_freqgrandaverage(cfgtmp, TFs_byrun_lmbrd{:}); 
+% stat = plb_ft_TFRstats_cond1vscond2(cfgtmp, TFs_byrun_lmbrd, TFs_byrun_quiet); % adds a .stats field
+
+
+
+% cfgtmp = []; 
+% cfgtmp.keepindividual = 'no'; 
+% TF_grandavg_quiet = ft_freqgrandaverage(cfgtmp, TFs_byrun_quiet{:}); 
+% TF_grandavg_lmbrd = ft_freqgrandaverage(cfgtmp, TFs_byrun_lmbrd{:}); 
+% TF_grandavg_lmbrd.powspctrm = TF_grandavg_lmbrd.powspctrm - TF_grandavg_quiet.powspctrm; 
+% 
+% cfgptmp = cfg_plot; 
+% datatmp.subject_id = ['group-' target_filter]; 
+% datatmp.run_id = length(TFs_byrun_quiet); 
+% datatmp.channel = 'max_bga_speech'; 
+% cfgptmp.title = {[datatmp.subject_id ' ' TASK ' nruns-' num2str(datatmp.run_id)],
+%                   ['ch-' datatmp.channel ' #trials=' num2str(nan)], 
+%                   ''};
+% pathtmp = [PATH_FIG filesep 'tlock-' TLOCK];
+% cfgptmp.path = [pathtmp filesep bml_bids_basefname(datatmp.subject_id, SESSION, TASK, num2str(datatmp.run_id)) '_elec-' datatmp.channel '_lombard-vs-quiet-grandavg.png'];
+% cfgptmp.savefig = 'yes';
+% cfgptmp.baselinetype = 'db'; % relchange, db, zscore
+% cfgptmp.zlim = [-2 2]; % [], 'auto'
+% cfgptmp.statmask = 'no'; 
+% plb_singleplotTFR(cfgptmp, TF_grandavg_lmbrd); 
+
+
+%% Resample to generate run-balanced TF and epochs
+% [grp, ia, ic] = unique(epochs_all(:, {'subject_id', 'run_id'}));
+% 
+% TF_all_subj_balanced = [];
+% epochs_all_subj_balanced = [];
+% for i = 1:height(grp)
+%     cfg_tmp = []; 
+%     cfg_tmp.trials = randsample(find(ic==i), 80, true); 
+%     
+% %     TF_tmp = ft_selectdata(cfg_tmp, TF_all); % ft_selectdata doesn't allow for resampling the same trials
+%     TF_tmp = TF_all; 
+%     TF_tmp.powspctrm = TF_all.powspctrm(cfg_tmp.trials, :, :, :); 
+% 
+% 
+%     if isempty(epochs_all_subj_balanced)
+%         epochs_all_subj_balanced = epochs_all(cfg_tmp.trials, :); 
+%         TF_all_subj_balanced = TF_tmp;
+%     else
+%         epochs_all_subj_balanced = [epochs_all_subj_balanced; epochs_all(cfg_tmp.trials, :)]; 
+%         TF_all_subj_balanced = ft_appendfreq([], TF_all_subj_balanced, TF_tmp); 
+%     end
+% 
+% end
+
+% epochs_all_subj_balanced = epochs_all(idxs_epochs_all, :); 
+% % FLAG: Latane Bullock 2023 08 03 I think the code below may not be
+% % right--try ft_selectdata() with cfg.trials? 
+% TF_all_subj_balanced.powspctrm = TF_all.powspctrm(idxs_epochs_all, :, :, :);
+% 
+% 
+% TF_all_subj_balanced = ft_selectdata(cfg_tmp, TF_all); 
+
+
+%% Prepare and plot a single-subject single-run time-frequency representation
+% this is computes over ALL channels--not just the channel=CHANNEL
+path_channel_summary_table = 'A03b_all-trials-bandpower_20240814.tsv'; 
+datatmp = []; % tmp variable to hold plotting parameters
+
+% ch_name = 'macro_L_CA'; % 'macro_L_CA' 'macro_Ll-macro_Lc'  'macro_Lc-macro_L_CA'
+% 
+% id_vars = {'subject_id', 'run_id', 'channel'};
+% [grps, ~, idxs_grp] = unique(epochs_all(:, id_vars));
+
+
+% for irun = 1:height(datatbl_run)
+% for ich = 1:length(datatbl_run.TF{irun}.label)
+
+% --- filter//select specific channels
+idxs_filt = datatbl_ch.subject_id=="DM1025"; 
+% idxs_filt = ones([height(datatbl_ch), 1]);
+idxs_filt = idxs_filt & ~contains(datatbl_ch.channel, 'dbs_R'); 
+datatbl_ch_filt = datatbl_ch(idxs_filt, :); 
+% --- or no filter//run all available channels
+% datatbl_ch_filt = datatbl_ch; 
+
+for ich = 1:height(datatbl_ch_filt)
+
+datatmp = table2struct(datatbl_ch_filt(ich, :)); 
+datatmp.TF_ch = datatmp.TF; 
+% filter for specific subject
+
+% if ~(contains(datatmp.subject_id, 'DM1033') && ... %  datatmp.run_id==4 && ... strcmp(datatmp.subject_id, 'DM102') &&
+%     contains(datatmp.channel, {'macro'})), ...
+%     continue, end
+% % if contains(datatmp.channel, 'CA'); continue; end 
+
+
+datatmp.meta = strjoin([SUBJECTS_META{SUBJECTS_META.subject_id==string(datatmp.subject_id), ...
+                                     {'diagnosis', 'sex', 'dbs_target'}}], '-'); 
+disp(datatmp)
+
+
+datatmp.electrode = electrodes(electrodes.subject_id==string(datatmp.subject_id) & ... 
+                               cellfun(@(s) contains(string(datatmp.channel), s), electrodes.name) & ... 
+                               electrodes.lombard_run_id==datatmp.run_id, :);
+
+assert(height(datatmp.electrode)<=3); % make sure not too many electrodes are matched 
+
+if height(datatmp.electrode)==0
+    datatmp.electrode.name{1} = 'NA'; 
+    datatmp.electrode.HCPMMP1_label_1{1} = 'NA'; 
+elseif height(datatmp.electrode)>1
+    datatmp.electrode = datatmp.electrode(1, :); % select first electrode as an approximation of bipolar
+end
+
+
+
+datatmp.epoch.curr_trials_filter = ~datatmp.epoch.(['bad_ch-' datatmp.channel]); 
+datatmp.n_trials = sum(datatmp.epoch.curr_trials_filter); 
+datatmp.n_trials = length(unique(datatmp.epoch.trial_id)); 
+if datatmp.n_trials < 20, continue, end
+if any(isnan(datatmp.epoch.noise_type)), continue, end 
+ 
+% % filter trials & channels 
+% cfgtmp = []; 
+% cfgtmp.trials = datatmp.epoch.curr_trials_filter; 
+% cfgtmp.channel  = datatmp.channel;
+% datatmp.TF_ch = ft_selectdata(cfgtmp, datatmp.TF); 
+% datatmp.epoch = datatmp.epoch(datatmp.epoch.curr_trials_filter, :); 
+
+% % stats activation vs baseline 
+% cfgtmp = []; 
+% cfgtmp.baseline = TBASEL; 
+% cfgtmp.toi_plot = TOI_PLOT; 
+% datatmp.TF_ch = plb_ft_TFRstats_actvsbl(cfgtmp, datatmp.TF_ch); % adds a .stats field
+% datatmp.TF_ch.stat_activ = datatmp.TF_ch.stat; 
+
+hF = figure('position', [532         269        1867         974]); 
+tiledlayout(2, 3); 
+nexttile(1); 
+% % plot and save 
+cfgptmp = cfg_plot; 
+cfgptmp.title = {[datatmp.subject_id ' ' TASK ' run-' num2str(datatmp.run_id) ' ch-' datatmp.channel],
+                  [' #trials-' num2str(datatmp.n_trials), ', ' datatmp.meta ', ' 'HCPlab-' datatmp.electrode.HCPMMP1_label_1{1}], 
+                  ['']}; 
+pathtmp = [PATH_FIG filesep SUBSET];
+cfgptmp.path = [pathtmp filesep bml_bids_basefname(datatmp.subject_id, SESSION, TASK, num2str(datatmp.run_id)) '_elec-' datatmp.channel '_wavelet1.png'];
+cfgptmp.savefig = 'no';
+cfgptmp.baselinetype = 'zscore'; % relchange, db, zscore, 'none'
+cfgptmp.zlim = [-5 5]; % [-10 10]; % [-3 3] for db, [-0.5 0.5] for zscore,   'auto'
+cfgptmp.statmask = 'no'; % yes, no 
+% aa = squeeze(datatmp.TF_ch.powpctrm(1, 1, :, :));
+cfgptmp.robavg = 'no'; % relchange, db, zscore
+cfgptmp.hax = gca(); 
+plb_singleplotTFR(cfgptmp, datatmp.TF_ch); 
+
+set(gca, 'yscale', 'log');  
+
+
+% PLOT 
+% lombard trials 
+% h1 = nexttile(3); 
+% cfgptmp.zlim = 'auto'; 
+% cfgptmp.avgoverrpt = 'yes';
+% cfgptmp.baselinetype = 'none';
+% cfgptmp.trials = logical(datatmp.epoch.noise_type); 
+% datatmp.TF_ch_lmbrd = ft_selectdata(cfgptmp, datatmp.TF_ch); 
+% cfgptmp.trials = ~logical(datatmp.epoch.noise_type); 
+% datatmp.TF_ch_quiet = ft_selectdata(cfgptmp, datatmp.TF_ch); 
+
+% dim = size(datatmp.TF_ch_quiet);
+% tmp = repmat(cfg.t_ftimwin(:), [1 dim(1)*dim(2)*dim(4)]); % repeat along second dim
+% tmp = reshape(tmp, [dim(3) dim(1) dim(2) dim(4)]); 
+% winNormFactor = permute(tmp, [2, 3, 1, 4]); % matrix with repeated values 
+% TF.powspctrm = TF.powspctrm .* winNormFactor; 
+
+% cfgptmp.hax = gca();
+% datatmp.TF_ch_lmbrd.powspctrm = log10(datatmp.TF_ch_lmbrd.powspctrm); 
+% plb_singleplotTFR(cfgptmp, datatmp.TF_ch_lmbrd); 
+% 
+% h2 = nexttile(6); 
+% cfgptmp.hax = gca(); 
+% datatmp.TF_ch_quiet.powspctrm = log10(datatmp.TF_ch_quiet.powspctrm); 
+% plb_singleplotTFR(cfgptmp, datatmp.TF_ch_quiet); 
+% 
+% colormap([h1], cbrewer2('OrRd')); 
+% colormap([h2], cbrewer2('OrRd')); 
+
+
+
+
+
+% PLOT PSD Split up by lombard and quiet 
+% cfgtmp = []; 
+nexttile(2); 
+cfgtmp.avgovertime = 'yes';
+cfgtmp.avgoverrpt = 'yes';
+
+% lombard trials  
+cfgtmp.trials = logical(datatmp.epoch.noise_type); 
+
+cfgtmp.latency = [0 1]; 
+datatmp.TF_ch_lmbrd_psd = ft_selectdata(cfgtmp, datatmp.TF_ch); 
+cfgtmp.latency = TBASEL; 
+datatmp.TF_ch_lmbrd_basel_psd = ft_selectdata(cfgtmp, datatmp.TF_ch); 
+
+
+% now for the quiet trials 
+cfgtmp.trials = logical(~datatmp.epoch.noise_type); 
+
+cfgtmp.latency = [0 1]; 
+datatmp.TF_ch_quiet_psd = ft_selectdata(cfgtmp, datatmp.TF_ch); 
+cfgtmp.latency = TBASEL; 
+datatmp.TF_ch_quiet_basel_psd = ft_selectdata(cfgtmp, datatmp.TF_ch); 
+
+cfgtmp.latency = TBASEL; 
+
+
+
+COLORS.linenoise = [156,53,135]/255; 
+loglog(datatmp.TF_ch_lmbrd_psd.freq, datatmp.TF_ch_lmbrd_psd.powspctrm(1,:), '-', ...
+    'DisplayName', 'lombard', 'Color', COLORS.NOISE, 'LineWidth', 3); hold on;
+
+loglog(datatmp.TF_ch_lmbrd_basel_psd.freq, datatmp.TF_ch_lmbrd_basel_psd.powspctrm(1,:), '--', ...
+    'DisplayName', 'basel-lombard', 'Color', COLORS.NOISE, 'LineWidth', 3);
+
+loglog(datatmp.TF_ch_quiet_psd.freq, datatmp.TF_ch_quiet_psd.powspctrm(1,:), '-', ...
+    'DisplayName', 'quiet', 'Color', COLORS.control, 'LineWidth', 3);
+
+loglog(datatmp.TF_ch_quiet_basel_psd.freq, datatmp.TF_ch_quiet_basel_psd.powspctrm(1,:), '--', ...
+    'DisplayName', 'basel-quiet', 'Color', COLORS.control, 'LineWidth', 3 );
+hL = xline(60, 'LineWidth', 3, 'DisplayName', '60Hz line', 'Color', COLORS.linenoise);
+hL = xline(60*[0.5 2 3 4], '--', 'LineWidth', 3, 'HandleVisibility', 'off', 'Color', COLORS.linenoise);
+xticks([10 30 60 100 150 250]); xticklabels(xticks());  
+xlabel('Frequency [Hz]');
+ylabel('PSD [uV^2 / Hz]');
+axis tight; grid on; legend
+
+
+
+% PLOT LOCATION 
+hax_loc = nexttile(5); 
+
+if contains(datatmp.channel, 'ecog')
+
+else
+    cfg = [];
+    cfg.h_ax = gca;
+    cfg.surface_facealpha = 0.1;
+    cfg.surface_facecolor = [0.5 0.5 0.5]; % COLORS.STN;
+    bml_plot3d_surface(cfg, SURFACE_DATA.stn.v, SURFACE_DATA.stn.f);
+    cfg.surface_facecolor =  [0.5 0.5 0.5]; % COLORS.GPi;
+    bml_plot3d_surface(cfg, SURFACE_DATA.gpi.v, SURFACE_DATA.gpi.f);
+    cfg.surface_facecolor =  [0.5 0.5 0.5]; % COLORS.GPe;
+    bml_plot3d_surface(cfg, SURFACE_DATA.gpe.v, SURFACE_DATA.gpe.f);
+
+    cfg = [];
+    cfg.radius = 1;
+    cfg.h_ax = gca();
+    elecs_tmp = datatmp.electrode;
+    elecs_tmp = renamevars(elecs_tmp, {'mni_x', 'mni_y', 'mni_z'}, {'x', 'y', 'z'});
+    elecs_tmp.color = repmat(0.9*[1 0 0], [height(elecs_tmp), 1]);
+    bml_plot3d_points(cfg, elecs_tmp); % to erase these: delete(findobj(gca, 'type', 'surface'))
+    view(views.medial.az, views.medial.el); delete(findobj(gca, 'type', 'light')); camlight('headlight'); shg
+
+    % copy for a different view
+    pos = get(hax_loc, 'Position');
+    hax_loc_new = copyobj(hax_loc, gcf); axes(hax_loc_new);
+    set(hax_loc_new, 'Position', pos.*[1 1 0.7 0.7] - [pos(3)*0.3 pos(4)*0.3 0 0]);
+    view(views.posterior.az, views.posterior.el); delete(findobj(gca, 'type', 'light')); camlight('headlight'); shg
+
+    axes(hax_loc); % nexttile doesn't work if we don't revert to this
+end
+
+% pause(0.3)
+% hax_tmp = nexttile();
+% hax = copyobj(hax_loc, f); axes(hax);
+% set(hax, 'position', get(hax_tmp, 'position')); delete(hax_tmp)
+% ea_view(views.medial); cam_view = 'medial'; delete(findobj(gca, 'type', 'light')); camlight('headlight');  %
+
+
+
+% PLOT BASELINE POWER over trials
+nexttile(4); 
+cfgtmp = []; 
+cfgtmp.trials = 'all';
+cfgtmp.avgovertime = 'yes';
+cfgtmp.avgoverrpt = 'no';
+cfgtmp.avgoverfreq = 'yes'; 
+
+% calculate summary stats
+freq_rngs = [12 30; 
+             60 250];
+freq_names = {'beta', 'bga'};
+time_wins = [TBASEL; 
+           -1 0; 
+           0 1]; 
+twins_names = {'basel', 'prespeech', 'speech'};
+
+nr = table(); 
+datatmp.TF_ch_flat = {}; 
+for irng = 2:height(freq_rngs)
+    for iwin = 1:height(time_wins)
+        cfgtmp.frequency = freq_rngs(irng, :);
+        cfgtmp.latency = time_wins(iwin, :);
+        datatmp.TF_ch_flat{irng, iwin} = ft_selectdata(cfgtmp, datatmp.TF_ch); 
+
+        nr.([freq_names{irng} '_' twins_names{iwin} '_mean' ]) = datatmp.TF_ch_flat{irng, iwin}.powspctrm(:);
+    end
+end
+
+nr.subject_id(:) = string(datatmp.subject_id); 
+nr.run_id(:) = (datatmp.run_id);
+nr.trial_id = datatmp.epoch.trial_id; 
+nr.noise_type = datatmp.epoch.noise_type; 
+nr.channel(:) = string(datatmp.channel); 
+nr.channel_id(:) = string(datatmp.subject_id) + "_run" + datatmp.run_id + "_" + datatmp.channel;
+% nr.n_trials() = size(datatmp.TF.powspctrm, 1); 
+nr.timestamp(:) = string(datetime('now', 'Format','yyyy-MM-dd-hh-mm'))   ;
+
+% UNCOMMENT TO UPDATE summary table
+% old = readtable(path_channel_summary_table, 'FileType', 'text', 'Delimiter', '\t'); 
+% new = bml_annot_rowbind([], old, (nr));
+% new = [old; nr]; 
+% writetable(new, path_channel_summary_table, 'FileType', 'text', 'Delimiter', '\t'); 
+
+
+% -------- PLOT SENTENCE-wise gamma and beta average traces
+figure('position', [1000          42         560        1314]); % calculate summary stats
+freq_rngs = [12 30; 
+             60 250; 
+             40 90];
+freq_names = {'beta', 'bga', 'gamma40to90'};
+sentence_ids = 1:10; 
+ylims = [-1 4]; % previously [-1 2.9]
+t=tiledlayout(numel(sentence_ids)+1, 1, 'TileSpacing','none');
+
+for irng = 3
+    for isent = 1:(length(sentence_ids)+1)
+        nexttile();
+        cfgtmp = [];
+        cfgtmp.avgoverrpt = 'no';
+        cfgtmp.avgoverfreq = 'yes';
+        cfgtmp.frequency = freq_rngs(irng, :);
+        %         cfgstmp.latency = TOI_PLOT;
+        if isent==length(sentence_ids)+1
+            cfgtmp.trials = 1:height(datatmp.epoch); 
+            sentence_text = 'all';
+%             sentence_dur = mean(datatmp.epoch.ends_sentences - ... 
+%                                 datatmp.epoch.starts_sentences);
+        else 
+            cfgtmp.trials = datatmp.epoch.sentence_id==isent;
+            sentence_text = datatmp.epoch.sentence_text{find(cfgtmp.trials, 1)};
+%             event_dur = datatmp.epoch.ends_sentences(cfgtmp.trials) - ... 
+%                            datatmp.epoch.starts_sentences(cfgtmp.trials);
+        end
+        if TLOCK=="word-on"
+            diffs = diff(datatmp.epoch.starts);  
+            event_dur = mean(diffs(diffs<2)); 
+        elseif TLOCK=="sentence-on"
+            event_dur = mean(datatmp.epoch.ends_sentences - datatmp.epoch.starts_sentences); 
+        elseif TLOCK=="audio-on"
+            event_dur = mean(datatmp.epoch.audio_duration); 
+        end
+        
+
+        TF_tmp = ft_selectdata(cfgtmp, datatmp.TF_ch);
+
+        % ---- option 1: baseline across trials with FT
+        cfgtmp = [];
+        cfgtmp.baseline = TBASEL;
+        cfgtmp.baselinetype = 'zscore';
+        TF_tmp = ft_freqbaseline(cfgtmp, TF_tmp);
+        % ---- option 2: baseline within trials manually
+%         eeg = TF_tmp.powspctrm; 
+%         tidxs = TF_tmp.time>TBASEL(1) & TF_tmp.time<TBASEL(2);  
+%         eeg_mean =  mean(eeg(:, :, :, tidxs), 4, 'omitnan');  eeg_mean = repmat(eeg_mean, [1 1 1 size(eeg, 4)]);
+%         eeg_std = std(eeg(:, :, :, :), [], 4, 'omitnan'); eeg_std = repmat(eeg_std, [1 1 1 size(eeg, 4)]);
+%         TF_tmp.powspctrm = (eeg - eeg_mean) ./ eeg_std; 
+        % ----
+        tidxs = TF_tmp.time>TBASEL(1) & TF_tmp.time<TBASEL(2);  
+        percentiles = prctile(TF_tmp.powspctrm(:), [5 95]); 
+
+        cfgtmp = [];
+        cfgtmp.variance = 'yes';
+        %         datatmp.TF_ch_sent{irng, isent} = ft_freqdescriptives(cfgtmp, TF_tmp);
+        TF_tmp_avg = ft_freqdescriptives(cfgtmp, TF_tmp);
+
+        cfgtmp = [];
+        cfgtmp.latency = TOI_PLOT;
+        TF_tmp_avg = ft_selectdata(cfgtmp, TF_tmp_avg);
+        TF_tmp = ft_selectdata(cfgtmp, TF_tmp);
+
+
+%         plot(TF_tmp.time, squeeze(TF_tmp.powspctrm)'); 
+        
+        if isent<=length(sentence_ids) 
+            tmp = TF_tmp;
+            plot(tmp.time, sgolayfilt(squeeze(tmp.powspctrm)', 3, 11), 'Color', 0.8*[1 1 1]); hold on;
+        end
+        tmp = TF_tmp_avg;
+        plot(tmp.time, squeeze(tmp.powspctrm)', 'Color', 'k', 'LineWidth', 3); 
+%         plot_bounded_line(tmp.time, ...
+%             squeeze(tmp.powspctrm)', ...
+%             squeeze(tmp.powspctrmsem)', 'k', ...
+%             'hA', gca(), ...
+%             'DisplayName', 'all');
+        xline(0, 'k', 'LineWidth', 2, 'HandleVisibility', 'off');
+        xline(event_dur, '--k', 'LineWidth', 2, 'HandleVisibility', 'off');
+        yline(0, 'color', 'green', 'LineWidth', 2, 'HandleVisibility', 'off');
+        if isent>length(sentence_ids)
+            yline(percentiles, 'color', 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
+            ylim(percentiles*1.1)
+        else
+            ylim(ylims); 
+        end
+        ylabel(['id==' num2str(isent)],  'interpreter', 'none'); 
+        xlim(TOI_PLOT); 
+        xl=xlim();yl=ylim(); 
+        hT = text(xl(2), yl(2), sentence_text, ...
+            'Color', 'red', ...
+            'HorizontalAlignment', 'right', ...
+            'VerticalAlignment', 'top', ...
+            'FontSize', 12);  % Adjust font size as needed
+        grid off;
+    end
+end
+
+
+linkaxes(t.Children, 'x'); 
+% ylabel([freq_names{irng} ' z-score wrt baseline']); 
+sgtitle(cfgptmp.title, 'interpreter', 'none');
+export_fig([cfgptmp.path(1:end-4) '_' freq_names{irng} '_by-sentence.png'], '-m3', gcf);
+pause(0.3); close(gcf); 
+% ----------- end sentence-wise plot
+% continue;
+
+
+figure(hF); % back to main figure
+% select baseline gamma over trials
+trial_avgs = datatmp.TF_ch_flat{2, 1}; % select which condition
+idxs_islombard = logical(datatmp.epoch.noise_type); 
+
+
+scatter(datatmp.epoch.id(~idxs_islombard), ...
+        trial_avgs.powspctrm(~idxs_islombard), ...
+        'o', 'MarkerEdgeColor', COLORS.control); hold on;
+yline(mean(trial_avgs.powspctrm(~idxs_islombard)), '--', 'linewidth', 3, 'Color', COLORS.control); 
+scatter(datatmp.epoch.id(idxs_islombard), ...
+        trial_avgs.powspctrm(idxs_islombard), ...
+        'o', 'MarkerEdgeColor', COLORS.NOISE); 
+yline(mean(trial_avgs.powspctrm(idxs_islombard)), '--', 'linewidth', 3, 'Color', COLORS.NOISE); 
+
+% select trial gamma over trials
+trial_avgs = datatmp.TF_ch_flat{2, 3}; % select which condition
+idxs_islombard = logical(datatmp.epoch.noise_type); 
+scatter(datatmp.epoch.id(~idxs_islombard), ...
+        trial_avgs.powspctrm(~idxs_islombard), ...
+        'filled', 'o', 'MarkerFaceColor', COLORS.control); hold on;
+yline(mean(trial_avgs.powspctrm(~idxs_islombard)), 'linewidth', 3, 'Color', COLORS.control); 
+scatter(datatmp.epoch.id(idxs_islombard), ...
+        trial_avgs.powspctrm(idxs_islombard), ...
+        'filled', 'o', 'MarkerFaceColor', COLORS.NOISE); 
+yline(mean(trial_avgs.powspctrm(idxs_islombard)), 'linewidth', 3, 'Color', COLORS.NOISE); 
+xlabel('Trial #'); ylabel('BGA power in [baseline/trial]')
+
+
+% plot shading for time blocks of lombard and quiet  
+x1 = [1; diff(idxs_islombard)~=0]; x1(end)=1; 
+idxs_change = logical(x1(1:end-1)); 
+x1 = datatmp.epoch.id(find(x1)); 
+x2 = circshift(x1, -1); 
+x = [x1 x2]; x(end, :) = []; x = x'; 
+x = [x; flipud(x)]; 
+ylimits = ylim(); ylimits = [ylimits; ylimits];  
+ylimits = repmat(ylimits(:), [1 size(x, 2)]); 
+c = datatmp.epoch.noise_type(idxs_change)+1;
+colormap(gca, [COLORS.control; COLORS.NOISE])
+hF = fill(x, ylimits, c, 'EdgeColor','none', 'FaceAlpha', 0.3); 
+uistack(hF, 'bottom');  axis tight; 
+
+yyaxis right;
+y = datatmp.TF_ch_flat{2, 3}.powspctrm - datatmp.TF_ch_flat{2, 1}.powspctrm; 
+plot(datatmp.epoch.id, ...
+     movmean(y, 3), ...
+     'k', 'LineWidth', 1); 
+yline(0, 'k', 'LineWidth', 1); 
+ylimits = ylim(); ylim(max(abs(ylimits))*[-1 1]);
+ylabel('BGA trial minus baseline [uV]'); 
+
+ax = gca(); ax.YAxis(1).Color = COLORS.NOISE;ax.YAxis(2).Color = 'k';
+
+
+export_fig(cfgptmp.path, '-m3',gcf);
+
+pause(0.1); 
+close(gcf)
+continue
+
+
+
+
+
+
+datatmp.TF_ch_avg = ft_freqdescriptives([], datatmp.TF_ch);
+datatmp.TF_ch_avg = ft_freqbaseline(cfgptmp, datatmp.TF_ch_avg); 
+datatmp.TF_ch_avg.stat = datatmp.TF_ch.stat; 
+nr = keepfields(datatmp, {'subject_id', 'run_id', 'channel'}); 
+for irng = 1:height(freq_rngs)
+    for iwin = 1:height(time_wins)
+        idxs_time = datatmp.TF_ch_avg.time > time_wins(iwin, 1) & datatmp.TF_ch_avg.time < time_wins(iwin, 2);
+        idxs_freq = datatmp.TF_ch_avg.freq > freq_rngs(irng, 1) & datatmp.TF_ch_avg.freq < freq_rngs(irng, 2); 
+
+        issig = any(any(datatmp.TF_ch_avg.stat(1, idxs_freq, idxs_time)));
+        nr.([freq_names{irng} '_' twins_names{iwin} '_sig' ]) = issig;
+
+        m = mean(mean(datatmp.TF_ch_avg.powspctrm(1, idxs_freq, idxs_time))); 
+        nr.([freq_names{irng} '_' twins_names{iwin} '_mean' ]) = m;
+
+    end
+end
+
+nr.channel_id = string(datatmp.subject_id) + "_run" + datatmp.run_id + "_" + datatmp.channel;
+nr.n_trials = size(datatmp.TF.powspctrm, 1); 
+nr.timestamp = string(datetime('now'));
+
+old = readtable(path_channel_summary_table, 'FileType', 'text', 'Delimiter', '\t'); 
+new = bml_annot_rowbind([], old, struct2table(nr));
+writetable(new, path_channel_summary_table, 'FileType', 'text', 'Delimiter', '\t'); 
+
+
+
+% Split up by lombard and quiet 
+cfgtmp = []; 
+cfgtmp.trials = logical(datatmp.epoch.noise_type); 
+datatmp.TF_ch_lmbrd = ft_selectdata(cfgtmp, datatmp.TF_ch); 
+cfgtmp.trials = logical(~datatmp.epoch.noise_type); 
+datatmp.TF_ch_quiet = ft_selectdata(cfgtmp, datatmp.TF_ch); 
+
+% stats lombard vs quiet 
+% cfgtmp = []; 
+% cfgtmp.latency = TOI_PLOT; 
+% datatmp.TF_ch_lmbrd = plb_ft_TFRstats_cond1vscond2(cfgtmp, datatmp.TF_ch_lmbrd, datatmp.TF_ch_quiet); % adds a .stats field
+% datatmp.TF_ch_lmbrd.stat_lmbrd = datatmp.TF_ch_lmbrd.stat; 
+
+
+
+
+% plot bandbandpass lombard vs quiet
+figure('Position', [1000         -11         560        1007], 'Visible', 'on')
+tiledlayout(2, 1); 
+for irng = 1:height(freq_rngs)
+nexttile(); hold on; 
+cfgtmp = []; 
+cfgtmp.baseline =  TBASEL;
+cfgtmp.baselinetype = 'zscore';
+datatmp.TF_ch_lmbrd_normed = ft_freqbaseline(cfgtmp, datatmp.TF_ch_lmbrd); 
+datatmp.TF_ch_quiet_normed = ft_freqbaseline(cfgtmp, datatmp.TF_ch_quiet); 
+datatmp.TF_ch_normed = ft_freqbaseline(cfgtmp, datatmp.TF_ch); 
+
+% then average over frequency
+cfgtmp = [];
+cfgtmp.frequency = freq_rngs(irng, :);
+cfgtmp.avgoverfreq = 'yes';
+cfgtmp.latency = TOI_PLOT; 
+datatmp.TF_ch_lmbrd_normed = ft_selectdata(cfgtmp, datatmp.TF_ch_lmbrd_normed); 
+datatmp.TF_ch_quiet_normed = ft_selectdata(cfgtmp, datatmp.TF_ch_quiet_normed); 
+datatmp.TF_ch_normed = ft_selectdata(cfgtmp, datatmp.TF_ch_normed); 
+
+
+% TF_tmp_perm = {}; 
+% for i = 1:100
+%     TF_tmp_perm{i} = datatmp.TF_ch_normed;
+%     tidxs = (TF_tmp_perm{i}.time > -0.5) & (TF_tmp_perm{i}.time < 0.5);
+%     tidxs = find(tidxs);
+%     for irpt = 1:size(TF_tmp_perm{i}.powspctrm, 1)
+%         % tidxs_perm = tidxs(randperm(length(tidxs))); 
+%         tidxs_perm = circshift(tidxs, randi(length(tidxs))); 
+%         TF_tmp_perm{i}.powspctrm(irpt, :, :, tidxs_perm) = TF_tmp_perm{i}.powspctrm(irpt, :, :, tidxs); 
+%     end
+%     TF_tmp_perm{i} = ft_freqdescriptives([], TF_tmp_perm{i}); 
+% end
+% cfg = [];
+% cfg.appenddim = 'rpt';
+% datatmp.TF_ch_normed_perm = ft_appendfreq(cfg, TF_tmp_perm{:});
+
+
+% average over trials, return the variance across trials
+cfgtmp = [] ;
+cfgtmp.variance = 'yes';
+datatmp.TF_ch_lmbrd_normed = ft_freqdescriptives(cfgtmp, datatmp.TF_ch_lmbrd_normed);
+datatmp.TF_ch_quiet_normed = ft_freqdescriptives(cfgtmp, datatmp.TF_ch_quiet_normed); 
+datatmp.TF_ch_normed = ft_freqdescriptives(cfgtmp, datatmp.TF_ch_normed); 
+% datatmp.TF_ch_normed_perm = ft_freqdescriptives(cfgtmp, datatmp.TF_ch_normed_perm); 
+% datatmp.TF_ch_normed_perm.powspctrmsem = prctile(datatmp.TF_ch_normed_perm.powspctrm, .05, 3); 
+
+% plot whichever conditions are of interest
+tmp = datatmp.TF_ch_lmbrd_normed; 
+plot_bounded_line(tmp.time, ...
+    squeeze(tmp.powspctrm)', ...
+    squeeze(tmp.powspctrmsem)', COLORS.NOISE, ...
+    'hA', gca(), ...
+    'DisplayName', 'lombard');
+
+tmp = datatmp.TF_ch_quiet_normed; 
+plot_bounded_line(tmp.time, ...
+    squeeze(tmp.powspctrm)', ...
+    squeeze(tmp.powspctrmsem)', COLORS.control, ...
+    'hA', gca(), ...
+    'DisplayName', 'no-noise');
+
+% tmp = datatmp.TF_ch_quiet_normed; 
+% plot_bounded_line(tmp.time, ...
+%     squeeze(tmp.powspctrm)', ...
+%     squeeze(tmp.powspctrmsem)', COLORS.control*1.5, ...
+%     'hA', gca(), ...
+%     'DisplayName', 'no-noise');
+
+tmp = datatmp.TF_ch_normed; 
+plot_bounded_line(tmp.time, ...
+    squeeze(tmp.powspctrm)', ...
+    squeeze(tmp.powspctrmsem)', 'k', ...
+    'hA', gca(), ...
+    'DisplayName', 'all');
+
+xlim(TOI_PLOT); 
+ylabel([freq_names{irng} ' z-score wrt baseline']); 
+xline(0, 'k', 'LineWidth', 2, 'HandleVisibility', 'off');
+title(cfgptmp.title, 'interpreter', 'none');
+
+% % special code for Latane F31 grant submission
+% xlim([-1 2.5]);
+% hL = findall(gca, 'type', 'line'); 
+% delete(hL(2));
+% hL = findall(gca, 'type', 'patch'); 
+% delete(hL(1));
+legend()
+
+nx = 3; ny = 2;
+hax_loc = subplot(ny,nx, 3);
+% Load MNI DISTAL atlas subcortical surfaces to plot
+ld = load([PATH_ANALYSIS '/utils/MNI09NLIN_DISTAL_GPi_STN_left_facesvertices']);
+SURFACE_DATA = [];
+SURFACE_DATA.stn.v = ld.STN_left_vertices;
+SURFACE_DATA.stn.f = ld.STN_left_faces;
+SURFACE_DATA.gpi.v = ld.GPi_left_vertices;
+SURFACE_DATA.gpi.f = ld.GPi_left_faces;
+SURFACE_DATA.gpe.v = ld.GPe_left_vertices;
+SURFACE_DATA.gpe.f = ld.GPe_left_faces;
+views = [];
+views.posterior = ld.views.posterior; % save new view
+views.medial = ld.views.medial; % save new view views.medial=ea_view();
+
+cfg = [];
+cfg.h_ax = gca;
+cfg.surface_facealpha = 0.1;
+cfg.surface_facecolor = [0.5 0.5 0.5]; % COLORS.STN;
+bml_plot3d_surface(cfg, SURFACE_DATA.stn.v, SURFACE_DATA.stn.f);
+cfg.surface_facecolor =  [0.5 0.5 0.5]; % COLORS.GPi;
+bml_plot3d_surface(cfg, SURFACE_DATA.gpi.v, SURFACE_DATA.gpi.f);
+cfg.surface_facecolor =  [0.5 0.5 0.5]; % COLORS.GPe;
+bml_plot3d_surface(cfg, SURFACE_DATA.gpe.v, SURFACE_DATA.gpe.f);
+
+elec_split = split(elec{e}, '-'); elec_split = elec_split{1};  % if channel is bipolar, take just anode
+cfg = [];
+cfg.radius = 1;
+cfg.h_ax = gca();
+elecs_tmp = electrode(electrode.electrode==string(elec_split), :);
+elecs_tmp = renamevars(elecs_tmp, {'mni_nonlinear_x', 'mni_nonlinear_y', 'mni_nonlinear_z'}, ...
+  {'x', 'y', 'z'});
+elecs_tmp.color = repmat(0.9*[1 0 0], [height(elecs_tmp), 1]);
+elecs_tmp.name = elecs_tmp.electrode;
+bml_plot3d_points(cfg, elecs_tmp); % to erase these: delete(findobj(gca, 'type', 'surface'))
+% % view(0,0); delete(findobj(gca, 'type', 'light')); camlight('headlight'); shg
+ea_view(views.posterior); cam_view = 'posterior'; delete(findobj(gca, 'type', 'light')); camlight('headlight');  %
+
+pause(0.3)
+hax_tmp = subplot(ny,nx, 6);
+hax = copyobj(hax_loc, f); axes(hax);
+set(hax, 'position', get(hax_tmp, 'position')); delete(hax_tmp)
+ea_view(views.medial); cam_view = 'medial'; delete(findobj(gca, 'type', 'light')); camlight('headlight');  %
+
+
+end
+suffix = 'lombard-vs-quiet-vs-all';
+cfgptmp.path = [pathtmp filesep bml_bids_basefname(datatmp.subject_id, SESSION, TASK, num2str(datatmp.run_id)) '_elec-' datatmp.channel '_traces-' suffix];
+exportgraphics(gcf, [cfgptmp.path '.eps'], 'ContentType', 'vector');
+exportgraphics(gcf, [cfgptmp.path '.tiff'], 'Resolution', 300);
+
+
+% close(gcf)
+close all
+end
+
+
+
+
+
+
+
+
+
+%% Plot single-subject bandpassed 
+idx = 1; 
+datatmp = table2struct(datatbl_ch(idx, :)); 
+
+
+% baseline first 
+cfg.baseline =  TBASEL;
+cfg.baselinetype = 'zscore';
+datatmp.TF_normed = ft_freqbaseline(cfg, datatmp.TF); 
+
+% then average over frequency
+cfg = [] ;
+cfg.frequency = [70 150];
+cfg.avgoverfreq = 'yes';
+datatmp.TF_bga = ft_selectdata(cfg, datatmp.TF_normed); 
+
+
+% figure; hold on; 
+% traces = squeeze(tmp.TF_bga.powspctrm); 
+% traces = sgolayfilt(traces', 3, 51)';
+% plot(datatmp.TF_bga.time, traces', 'Color', 0.3*[1 1 1 1]); 
+% plot(datatmp.TF_bga.time, mean(traces, 1), 'Color', 'k', 'LineWidth', 3);
+
+
+figure; hold on; 
+traces = squeeze(datatmp.TF_bga.powspctrm); 
+sem = std(traces, [], 1, 'omitnan') ./ sqrt(size(traces, 1)); 
+sem(isnan(sem)) = 0; 
+m  = mean(traces, 1, 'omitnan'); 
+m = sgolayfilt(m', 3, 31)';
+m(isnan(m)) = 0; 
+% plot(datatmp.TF_bga.time, mean(traces, 1), 'Color', 'r', 'LineWidth', 3);
+plot_bounded_line(datatmp.TF_bga.time, m, sem, 'k', ... 
+    'hA', gca(), ...
+    'DisplayName', datatmp.subject_id);
+xlim(TOI_PLOT); 
+
+
+
+
+%% Plot TFR across all groups, all subjects, regions
+
+% %-------
+% SUBJECT = 'group';
+% datatmp.epoch = epochs_all; 
+% datatmp.TF = TF_all; 
+% %-------
+
+%-------
+datatmp = []; 
+datatmp.subject_id = 'group-STN-GPi-GPe_noise-type-all';
+datatmp.run_id = nan; 
+datatmp.channels = 'macro'; 
+datatmp.channels_str = 'macro-all'; 
+
+datatmp.datatbl_ch = datatbl_ch; % all
+% datatmp.datatbl_ch = datatbl_ch(datatbl_ch.is_stn, :); % gpi/stn only 
+
+% = ft_selectdata(cfg, datatmp.TF);
+% datatmp.epoch = datatmp.epoch(cfg.trials, :); 
+%-------
+
+
+% %-------
+% SUBJECT = 'group-GPi-cond-QUIET-only';
+% tmp.epoch = epochs_all; 
+% tmp.TF = TF_all; 
+% 
+% cfg = []; 
+% cfg.trials = tmp.epoch.is_gpi & ~tmp.epoch.noise_type;
+% tmp.TF = ft_selectdata(cfg, tmp.TF);
+% tmp.epoch = tmp.epoch(cfg.trials, :); 
+% %-------
+
+
+% %-------
+% SUBJECT = 'group-GPi-run-balanced';
+% tmp.epoch = epochs_all_subj_balanced; 
+% tmp.TF = TF_all_subj_balanced; 
+% 
+% cfg = []; 
+% cfg.trials = tmp.epoch.is_gpi;
+% tmp.TF = ft_selectdata(cfg, tmp.TF);
+% tmp.epoch = tmp.epoch(cfg.trials, :); 
+% %-------
+
+
+% %-------
+% SUBJECT = 'group-GPi-run-balanced-cond-QUIET-only';
+% tmp.epoch = epochs_all_subj_balanced; 
+% tmp.TF = TF_all_subj_balanced; 
+% 
+% cfg = []; 
+% cfg.trials = tmp.epoch.is_gpi & ~tmp.epoch.noise_type;
+% tmp.TF = ft_selectdata(cfg, tmp.TF);
+% tmp.epoch = tmp.epoch(cfg.trials, :); 
+% %-------
+
+% select data according to above parameters
+cfgtmp = []; 
+cfgtmp.baselinetype = 'zscore'; 
+cfgtmp.baseline = TBASEL; 
+
+
+datatmp.TFs  = {}; 
+for ich = 1:height(datatmp.datatbl_ch)
+    cfgtmp.trials = 'all'; 
+    TF_all = ft_selectdata(cfgtmp, datatmp.datatbl_ch.TF{ich});
+    TF_all = ft_freqdescriptives([], TF_all); % average 
+    TF_all  = ft_freqbaseline(cfgtmp, TF_all); % z-score
+    
+    cfgtmp.trials = datatmp.datatbl_ch.epoch{ich}.noise_type==1; 
+    TF_noise = ft_selectdata(cfgtmp, datatmp.datatbl_ch.TF{ich});
+    TF_noise = ft_freqdescriptives([], TF_noise); % average 
+    TF_noise  = ft_freqbaseline(cfgtmp, TF_noise); % z-score
+
+    cfgtmp.trials = datatmp.datatbl_ch.epoch{ich}.noise_type==0; 
+    TF_quiet = ft_selectdata(cfgtmp, datatmp.datatbl_ch.TF{ich});
+    TF_quiet = ft_freqdescriptives([], TF_quiet); % average 
+    TF_quiet  = ft_freqbaseline(cfgtmp, TF_quiet); % z-score
+
+    TF_diff = TF_noise; 
+    TF_diff.powspctrm = TF_noise.powspctrm - TF_quiet.powspctrm; 
+    
+    % set which ever one you want here
+    datatmp.TFs{ich} = TF_all; % TF_all, TF_noise, TF_quiet, TF_diff
+    datatmp.TFs{ich}.label = {'na'}; 
+end
+TF_group = ft_appendfreq([], datatmp.TFs{:});
+% TF_group = ft_freqdescriptives([], TF_group); % average 
+% cfgtmp = []; cfgtmp.keepindividual = 'yes'; 
+% TF_group = ft_freqgrandaverage(cfgtmp, datatmp.TFs{:}); 
+TF_group.powspctrm = spm_robust_average(TF_group.powspctrm, 1);
+
+
+% run statistics 
+% TF_noise
+
+
+figure
+cfgptmp = cfg_plot; 
+cfgptmp.title = {[datatmp.subject_id ' ' TASK ' run-' num2str(nan)],
+              ['#ch=' num2str(length(datatmp.TFs)) ' #trials=' num2str(nan)]};
+
+pathtmp = [PATH_FIG filesep 'tlock-' TLOCK];
+cfgptmp.path = [pathtmp filesep datatmp.subject_id ...
+                '_elec-' datatmp.channels_str '-n-' num2str(length(datatmp.TFs)) ];
+cfgptmp.savefig = 'no';
+cfgptmp.baselinetype = 'none'; % relchange, db, zscore, 'none'
+cfgptmp.zlim = [-1 1]; % [-10 10]; % [-3 3] for db, [-0.5 0.5] for zscore,   'auto'
+    cfgptmp.path = [cfgptmp.path '_zlim-1']; 
+cfgptmp.statmask = 'no'; % yes, no 
+% aa = squeeze(datatmp.TF_ch.powpctrm(1, 1, :, :));
+cfgptmp.robavg = 'no'; % relchange, db, zscore
+cfgptmp.hax = gca(); 
+plb_singleplotTFR(cfgptmp, TF_group); 
+
+hC = colorbar(); 
+hC.Label.String = 'Power [z] wrt baseline'; 
+set(gca, 'yscale', 'log');  
+
+export_fig([cfgptmp.path '.png'], '-m3',gcf);
+
+
+% % FT cluster-based perm tests for significance wrt baseline
+% cfgtmp = []; 
+% cfgtmp.baseline = TBASEL; 
+% cfgtmp.xlim = TOI_PLOT; 
+% % datatmp.TF = plb_ft_TFRstats_actvsbl(cfgtmp, datatmp.TF);
+% 
+% % cfgtmp = copyfields(cfg_plot, datatmp); 
+% cfgtmp.run_id = nan; % randsample(datatmp.epoch.run_id, 1);
+% cfgtmp.n_trials = height(datatmp.epoch); 
+% cfgtmp.subject_id = [SUBJECT]; 
+% cfgtmp.title = {[cfgtmp.subject_id ' ' TASK ' run-' num2str(nan)],
+%               ['ch-' CHANNEL ' #trials=' num2str(cfgtmp.n_trials)]};
+% 
+% 
+% path_tmp = [PATH_FIG filesep 'tlock-' TLOCK];
+% % datatmp.path = [path_tmp filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_run-' num2str(datatmp.run_id) '_elec-' ch_name '_wavelet1.png'];
+% uni = unique(datatmp.epoch(:, {'subject_id', 'run_id'})); 
+% fname_suffix = ['nsub-' num2str(length(unique(uni.subject_id))) '-nrun-' num2str(height(uni))];
+% cfgtmp.path = [path_tmp filesep bml_bids_basefname(cfgtmp.subject_id, SESSION, TASK, num2str(cfgtmp.run_id)) '_elec-' CHANNEL '_wavelet_' fname_suffix '.png'];
+
+
+%% Try Matteo's code for cluster-based permutations 
+
+% get relavant time windows
+cfg_tmp = [];
+cfg_tmp.latency = [min([TOI_PLOT(:); TBASEL(:)]) max([TOI_PLOT(:); TBASEL(:)])];
+TF_tmp = ft_selectdata(cfg_tmp, cfg_plot.TF); 
+
+data = squeeze(TF_tmp.powspctrm);
+data = permute(data, [2 3 1]); 
+xQ = TF_tmp.time; 
+yQ = TF_tmp.freq; 
+baseline = TBASEL; 
+nperms = 1000; 
+store = run_Cluster2DMaps(data,xQ,yQ, baseline, nperms);
+
+figure; hold on; 
+imagesc(store.TscoreMap);
+contour(store.LabelMatrix, 1, 'LineWidth',3, 'Color', 'k')
+
+caxis([-5 5]);
+xticks(1:5:numel(xQ)); xticklabels(xQ(1:5:end));
+yticks(1:5:numel(yQ)); yticklabels(yQ(1:5:end));
+set(gca, 'ydir', 'normal')
+colorbar
+shg
+
+
+
+%% Lombard-vs-Quiet within-run statistical analysis
+grp = gro
+
+for itf = 1:length(TFs_byrun_lmbrd)
+    
+SUBJECT = epochs_byrun_lmbrd{itf}.subject_id{1}; 
+cfg_plot.run_id = epochs_byrun_lmbrd{itf}.run_id(1);
+
+cfg_statsig = [];
+cfg_statsig.latency          = [-1 3];
+[stat] = plb_ft_TFRstats_cond1vscond2(cfg_statsig, TFs_byrun_lmbrd{itf}, TFs_byrun_quiet{itf});
+
+
+TF_tmp_lmbrd = ft_freqdescriptives([], TFs_byrun_lmbrd{itf});
+TF_tmp_quiet = ft_freqdescriptives([], TFs_byrun_quiet{itf});
+TF_tmp = TF_tmp_lmbrd; 
+TF_tmp.powspctrm = TF_tmp_lmbrd.powspctrm - TF_tmp_quiet.powspctrm;
+
+cfg_tmp = []; 
+cfg_tmp.latency = cfg_statsig.latency; 
+TF_tmp = ft_selectdata(cfg_tmp, TF_tmp);
+TF_tmp.statmask = stat.mask; 
+
+
+cfg_plot.title = 'test'
+
+path_tmp = [PATH_FIG filesep 'tlock-' TLOCK];
+% tmp.path = [path_tmp filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_run-' num2str(tmp.run_id) '_elec-' ch_name '_wavelet1.png'];
+cfg_plot.path = [path_tmp filesep bml_bids_basefname(SUBJECT, SESSION, TASK, num2str(cfg_plot.run_id)) ...
+    '_elec-' CHANNEL '_tfr-lombard-minus-quiet_mcp-' cfg_statsig.correctm '.png'];
+
+cfg_plot.statmask = 'yes'; 
+cfg_plot.baseline = 'no';
+plb_singleplotTFR(cfg_plot, TF_tmp);
+
+end
+
+
+
+
+%% Split by group: STN
+
+SUBJECT = 'group-STN-run-balanced';
+tmp.epoch = epochs_all_subj_balanced; 
+tmp.TF = TF_all_subj_balanced; 
+
+
+cfg = []; 
+cfg.trials = tmp.epoch.is_stn;
+TF_all_cond = ft_selectdata(cfg, tmp.TF);
+epochs_all_cond = tmp.epoch(cfg.trials, :); 
+
+tmp.TF = TF_all_cond; 
+tmp.epoch = epochs_all_cond; 
+tmp.run_id = nan; % randsample(tmp.epoch.run_id, 1);
+tmp.n_trials = height(tmp.epoch); 
+
+uni = unique(tmp.epoch(:, {'subject_id', 'run_id'})); 
+SUBJECT = [SUBJECT '-nsub-' num2str(length(unique(uni.subject_id))) '-nrun-' num2str(height(uni))]; 
+
+
+
+
+%% Plot group-wide PSD/spectrum 
+
+tmp.epoch = epochs_all; 
+SUBJECT = 'group'; 
+[grp, ia, ic] = unique(tmp.epoch(:, {'subject_id', 'run_id', 'channel'}));
+SUBJECT = [SUBJECT '-nsub-' num2str(length(unique(grp.subject_id))) '-nrun-' num2str(height(grp))]; 
+CONDS = []; % conditions to specify
+
+grp = grp
+
+tmp.TF = TF_all; 
+
+psds_basel = []; 
+cfg = []; 
+cfg.latency     = TBASEL; 
+cfg.avgovertime = 'yes'; 
+cfg.avgoverrpt  = 'yes';
+for i = 1:height(grp)
+    cfg.trials = i==ic; 
+    psd_tmp = ft_selectdata(cfg, tmp.TF);  
+    psds_basel = [psds_basel; psd_tmp.powspctrm];
+end
+
+psds_activ = []; 
+cfg = []; 
+cfg.latency     = [0 2]; % activation window
+cfg.avgovertime = 'yes'; 
+cfg.avgoverrpt  = 'yes';
+for i = 1:height(grp)
+    cfg.trials = i==ic; 
+    psd_tmp = ft_selectdata(cfg, tmp.TF);  
+    psds_activ = [psds_activ; psd_tmp.powspctrm];
+end
+
+psds = psds_activ; % psds_basel, psds_active,   psds_active - psds_basel
+CONDS = 'activ-basel'; 
+
+figure; hold on;
+set(gca, 'XScale', 'log', 'YScale', 'log')
+plot(psd_tmp.freq, psds', 'color', 0.3*[1 1 1 1]);
+plot(psd_tmp.freq, mean(psds), 'color', 'k', 'LineWidth', 3);
+axis tight; 
+
+xt = [5 10 50 100 150];
+xticks(xt);
+
+xlabel('Frequency [Hz]');
+ylabel('Power [uV^2 / Hz]'); 
+
+tit = {[SUBJECT ' ' TASK], [' ch-' CHANNEL]}; 
+title(gca, tit, 'Interpreter','none', 'FontSize', 12);
+
+
+
+path_tmp = [PATH_FIG filesep 'tlock-' TLOCK filesep 'psd'];
+path_tmp = [path_tmp filesep 'sub-' SUBJECT '_ses-' SESSION '_task-' TASK '_run-' num2str(tmp.run_id) '_elec-' ch_name '_cond-' CONDS '.png'];
+
+% export_fig(path_tmp, '-m3',gcf);
+
+
+%% run stats on the TF 
+% based on https://www.fieldtriptoolbox.org/tutorial/cluster_permutation_freq/#within-trial-experiments
+cfg = [];
+cfg.channel          = CHANNEL;
+cfg.latency          = [-2 0];
+cfg.method           = 'montecarlo';
+cfg.frequency        = [12 16];
+cfg.statistic        = 'ft_statfun_actvsblT';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.minnbchan        = 2;
+cfg.tail             = 0;
+cfg.clustertail      = 0;
+cfg.alpha            = 0.025;
+cfg.numrandomization = 500;
+
+ntrials = size(tmp.TF.powspctrm,1);
+design  = zeros(2,2*ntrials);
+design(1,1:ntrials) = 1;
+design(1,ntrials+1:2*ntrials) = 2;
+design(2,1:ntrials) = [1:ntrials];
+design(2,ntrials+1:2*ntrials) = [1:ntrials];
+
+cfg.design   = design;
+cfg.ivar     = 1;
+cfg.uvar     = 2;
+
+
+%% Plot trial-wise bandpassed power in a band
+% get group-specific
+SUBJECT = 'group-quiet';
+basel_type = 'db'; 
+freq_band = [10 30]; 
+
+cfg = []; 
+cfg.trials = epochs_all.noise_type==0;
+TF_all_cond = ft_selectdata(cfg, TF_all);
+epochs_all_cond = epochs_all(cfg.trials, :); 
+
+tmp.TF = TF_all_cond; 
+tmp.epoch = epochs_all_cond; 
+tmp.run_id = nan; % randsample(tmp.epoch.run_id, 1);
+tmp.n_trials = height(tmp.epoch); 
+
+
+
+% baseline first 
+cfg.baseline =  TBASEL;
+cfg.baselinetype = basel_type;
+tmp.TF_normed = ft_freqbaseline(cfg, tmp.TF); 
+
+% then average over frequency
+cfg = [] ;
+cfg.frequency = freq_band;
+cfg.avgoverfreq = 'yes';
+cfg.latency = TOI_PLOT; 
+tmp.TF_bga = ft_selectdata(cfg, tmp.TF_normed); 
+
+figure; hold on; 
+traces = squeeze(tmp.TF_bga.powspctrm); 
+sem = std(traces, [], 1) ./ sqrt(size(traces, 1)); 
+traces = sgolayfilt(traces', 3, 31)';
+% plot(tmp.TF_bga.time, mean(traces, 1), 'Color', 'r', 'LineWidth', 3);
+plot_bounded_line(tmp.TF_bga.time, mean(traces, 1), sem, 'k', ... 
+    'hA', gca(), ...
+    'DisplayName', SUBJECT);
+
+axis tight; 
+% ylim([-2 2]); 
+
+
+
+
+% now plot gpi
+SUBJECT = 'group-lombard';
+
+cfg = []; 
+cfg.trials = epochs_all.noise_type==1;
+TF_all_cond = ft_selectdata(cfg, TF_all);
+epochs_all_cond = epochs_all(cfg.trials, :); 
+
+tmp.TF = TF_all_cond; 
+tmp.epoch = epochs_all_cond; 
+tmp.run_id = nan; % randsample(tmp.epoch.run_id, 1);
+tmp.n_trials = height(tmp.epoch); 
+
+
+
+% baseline first 
+cfg.baseline =  TBASEL;
+cfg.baselinetype = basel_type;
+tmp.TF_normed = ft_freqbaseline(cfg, tmp.TF); 
+
+% then average over frequency
+cfg = [] ;
+cfg.frequency = freq_band;
+cfg.avgoverfreq = 'yes';
+cfg.latency = TOI_PLOT; 
+tmp.TF_bga = ft_selectdata(cfg, tmp.TF_normed); 
+
+traces = squeeze(tmp.TF_bga.powspctrm); 
+sem = std(traces, 0, 1) ./ sqrt(size(traces, 1)); 
+traces = sgolayfilt(traces', 3, 31)';
+% plot(tmp.TF_bga.time, mean(traces, 1), 'Color', 'r', 'LineWidth', 3);
+plot_bounded_line(tmp.TF_bga.time, mean(traces, 1), sem, 'R', ... 
+    'hA', gca(), ...
+    'DisplayName', SUBJECT);
+
+legend('location', 'northwest');
+xlabel(['Time [s] wrt ' TLOCK]); 
+switch basel_type
+    case 'db'
+        ylabel('Power change [db] wrt baseline'); 
+    case 'relchange'
+        ylabel('Power change [%] wrt baseline');
+end
+
+%% 2025 06 23 Pilot mTRF method
+% decoding first 
+% cd()
+% addpath(genpath('util/mTRF-Toolbox-master/mtrf'))
+% 
+% cd('Y:\DBS\groupanalyses\task-lombard\20230524-subctx-lfp-group-PLB'); 
+% path_data_tmp = 'Y:\DBS\groupanalyses\task-lombard\20230524-subctx-lfp-group-PLB/data/mTFR-bml-example.mat'; 
+% save(path_data_tmp, 'D'); 
+% ld = load(path_data_tmp); D = ld.D; 
+
+ch_summary_all = []; 
+stim_channel = {'acousticspectrum_intensity'};
+% stim_channel = {'envaudio_s'}; %, 'envaudio_p'}; acousticspectrum_intensity
+
+
+% for irun = height(datatbl_run):-1:1
+for irun = 29 % DM1037
+D = datatbl_run.TF{irun};
+idxs = contains(D.label, 'macro') | contains(D.label, 'ecog'); 
+chs = D.label(idxs); 
+for ich = 1:length(chs)
+ch = chs(ich); 
+
+% struct to keep track of the summary data for the channel, ie the output of the model 
+ch_summary = [];  
+ch_summary.subject_id = string(datatbl_run.subject_id{irun}); 
+ch_summary.run_id = datatbl_run.run_id(irun); 
+ch_summary.channel = string(ch{1});
+
+fs = 100; 
+
+cfg=[]; cfg.channel=stim_channel; % 'audioR_a', acousticspectrum_intensity, envaudio_p, beh_acoustic_edge_rising
+stim = ft_selectdata(cfg, D); 
+stim_X = (stim.powspctrm); % rpt chan freq time
+
+assert(size(stim_X, 2)==length(stim_channel)); 
+
+stim_X = permute(stim_X, [4, 1, 2, 3]); 
+% figure; plot(mean(resp_X, 2)); % test we have the right channel
+% figure; plot(stim_X); hold 
+stim_X = reshape(stim_X, [], size(stim_X, 3)); 
+
+% Create a Gaussian kernel
+kernel_width = 2;  % standard deviation in samples
+win = round(4 * kernel_width);  % window size: ~±2σ
+g = gausswin(2*win + 1);        % or use normpdf if gausswin is unavailable
+g = g / max(g);                 % normalize to preserve amplitude
+
+% % have to do some processing of beh_acoustic_edge_rising because it's
+% % duplicated for adjacent time binds. we also want to separate out events
+% % that are the first onset vs continuation onsets
+% a = stim_X(:, 1); 
+% syl_onset_binary = zeros([height(stim_X), 1]);
+% syl_continue_binary = zeros([height(stim_X), 1]);
+% 
+% i = find(a); 
+% tdiff = diff([0; i/fs]); 
+% syl_onset_binary(   i(tdiff>3 &  tdiff>0.03)) = 1;
+% syl_continue_binary(i(tdiff<3 &  tdiff>0.03)) = 1;
+% stim_X = [syl_onset_binary syl_continue_binary]; 
+% % stim_X = syl_onset_binary; 
+
+
+% dur = diff(i/fs); 
+% figure; histogram(dur); % bimodal distribution... with split at 3 seconds
+
+% smoothing
+for i=1:width(stim_X)
+stim_X(:,i) = conv(stim_X(:,i), g, 'same');
+end
+stim_X = normalize(stim_X); 
+
+% DM1033 ecog_L234
+% DM1003 run 3 ecogL_233 motor response
+% DM1007 ecog_L225
+
+cfg=[]; 
+% cfg.channel= ch; % cellstr("ecog_L22" + int2str((4:9)'))
+
+% ch = { % DM1037 decode envaudio_p analysis 
+%     'ecog_L150'
+%     'ecog_L163'
+%     'ecog_L210'
+%     'ecog_L212'
+%     'ecog_L216'
+%     'ecog_L250'
+%     'ecog_L252'
+%     'ecog_L258'
+%     'ecog_L117'
+%     'ecog_L121'
+%     'ecog_L123'
+%     'ecog_L142'
+%     'ecog_L146'
+%     'ecog_L148'
+%     'ecog_L208'
+%     'ecog_L209'
+%     'ecog_L213'
+%     'ecog_L228'
+%     'ecog_L229'
+%     'ecog_L230'
+%     'ecog_L231'
+%     'ecog_L233'
+%     'ecog_L247'
+%     'ecog_L248'
+%     'ecog_L249'
+%     'ecog_L251'
+%     'ecog_L254'
+% }; cfg.channel = ch; 
+
+ch = { % DM1037 decode envaudio_p analysis 
+    'macro_Lc'
+    'macro_Lp'
+    'macro_Ll'
+}; cfg.channel = ch; 
+
+resp = ft_selectdata(cfg, D); 
+resp_X = (resp.powspctrm); 
+resp_X = permute(resp_X, [4, 1, 2, 3]); 
+% figure; plot(mean(resp_X, 2)); % test we have the right channel
+resp_X = reshape(resp_X, [], size(resp_X, 3)); 
+
+rm_idxs = any(ismissing(resp_X), 2) | any(ismissing(stim_X), 2);
+resp_X(ismissing(resp_X)) = 0;
+stim_X(ismissing(stim_X)) = 0;
+
+% smooth gamma
+% resp_X = conv(resp_X, g, 'same');
+resp_X = normalize(resp_X); 
+
+% resp_X = mTRFresample(resp_X,fs,fs, 20); 
+% figure; h = imagesc(resp_X); colorbar; set(h, 'AlphaData', ~isnan(resp_X)); caxis([0 15])
+
+
+% Detect bad data/channels
+if sum(isnan(resp_X) | abs(resp_X - 0) < 1e-16) > length(resp_X)/2
+    warning(['Skipping channel, detected nans or flatline: ' ch{1}]); continue;
+end
+
+% Partition data into training/test sets
+nfold = 10; testTrial = 2;
+[strain,rtrain,stest,rtest] = mTRFpartition(stim_X,resp_X,nfold,testTrial);
+
+
+%% Model hyperparameters
+Dir = -1; % direction of causality
+tmin = -500; % minimum time lag (ms)
+tmax = 500; % maximum time lag (ms)
+lambda = 10.^(-12:2:12); % regularization parameters
+
+%% Run efficient cross-validation
+cv = mTRFcrossval(strain,rtrain,fs,Dir,tmin,tmax,lambda,'zeropad',0,'fast',1);
+
+% if more than one thing is being decoded
+istim = 1; % manually select which one to plot 
+cv.r = squeeze(cv.r(:, :, istim)); 
+cv.err = squeeze(cv.err(:, :, istim)); 
+
+
+% Find optimal regularization value
+[rmax,idx] = max(mean(cv.r));
+
+
+% Train model
+model = mTRFtrain(strain,rtrain,fs,Dir,tmin,tmax,lambda(idx),'zeropad',0);
+
+% Test model
+[pred, test] = mTRFpredict(stest,rtest,model,'zeropad',0);
+
+% Plot CV accuracy
+figure
+subplot(2,2,1),
+% errorbar(1:numel(lambda),mean(cv.r),std(cv.r)/sqrt(nfold-1),'linewidth',2)
+errorbar(log10(lambda),mean(cv.r),std(cv.r)/sqrt(nfold-1),'linewidth',2)
+
+% set(gca,'xtick',1:numel(lambda)) % ... %     'xticklabel',-6:2:6), ...
+% xlim([0,numel(lambda)+1])
+axis square, grid on
+title('CV Accuracy'), xlabel('Regularization (1\times10^\lambda)'), ylabel('Correlation')
+
+% Plot CV error
+subplot(2,2,2), errorbar(log10(lambda),mean(cv.err),std(cv.err)/sqrt(nfold-1),'linewidth',2)
+% set(gca,'xtick',1:numel(lambda),'xticklabel',-6:2:6), xlim([0,numel(lambda)+1])
+axis square, grid on
+title('CV Error'), xlabel('Regularization (1\times10^\lambda)'), ylabel('MSE')
+
+% Plot reconstruction
+subplot(2,2,3), cla; hold on; 
+% plot((1:height(rtest))/fs,rtest(:, 1),'linewidth',2, 'DisplayName', 'resp')
+% figure; hold on; 
+% plot((1:height(rtest))/fs,rtest(:, 1),'linewidth',2, 'DisplayName', 'resp') % 
+plot((1:height(stest))/fs,stest(:, istim),'linewidth',2, 'DisplayName', 'stim')
+plot((1:height(pred))/fs,pred(:, istim)*2,'linewidth',4, 'Color', 'k', 'LineStyle', '-', 'DisplayName', 'pred   '),
+hold off, xlim([0,25])% , axis square, grid on
+title('Reconstruction'), xlabel('Time (s)'), ylabel('Amplitude (a.u.)'), legend()
+% plot((1:length(stest))/fs,stest,'linewidth',2), hold on
+% plot((1:length(pred))/fs,pred,'linewidth',2), hold off, xlim([0,100])% , axis square, grid on
+% title('Reconstruction'), xlabel('Time (s)'), ylabel('Amplitude (a.u.)'), legend('Orig','Pred')
+
+% Plot test accuracy
+subplot(2,2,4), bar(1,rmax), hold on, bar(2,test.r), hold off
+set(gca,'xtick',1:2,'xticklabel',{'Val.','Test'}), % axis square, grid on
+title('Model Performance'), xlabel('Dataset'), ylabel('Correlation')
+
+%%
+% Encoding models rather than decoding 
+% Load example speech dataset
+% load('util/mTRF-Toolbox-master/data/speech_data.mat','stim','resp','fs','factor');       
+% % Estimate STRF model weights
+% model = mTRFtrain(stim,resp*factor,fs,1,-100,400,0.1);
+
+Dir = 1; 
+tmin = -500; 
+tmax = 500; 
+lam = 1e2; % 1e3 for decoding?  1e-4 for 2-stim encoding
+model = mTRFtrain(strain, rtrain, fs, Dir, tmin, tmax, lam);
+% Test model
+[pred, test] = mTRFpredict(stest,rtest,model,'zeropad',0);
+ch_summary.testr = test.r; 
+
+% Plot STRF
+figure(Position=[ 1000         419        1210         919]); 
+subplot(2,2,1), mTRFplot(model,'mtrf', 'all', 1, [tmin + 50, tmax-50]);
+title('Speech STRF'), ylabel('Frequency band'), xlabel(''); colorbar; caxis([-0.8, 0.8])
+
+% Plot GFP
+subplot(2,2,2), mTRFplot(model,'mgfp','all', 1, [tmin + 50, tmax-50]);
+title('Global Field Power'), xlabel('')
+
+% Plot TRF
+subplot(2,2,3), 
+% figure; 
+mTRFplot(model,'trf', 'all', 'all', [tmin + 50, tmax-50], false, false);
+legend(cfg.channel, 'Location','eastoutside', 'interpreter', 'none')
+title('Encoding model: XX'), ylabel('Amplitude (a.u.)')
+
+% % Plot reconstruction
+subplot(2,2,4); hold on ;
+% figure; hold on; 
+plot((1:height(stest))/fs,stest(:, 1),'linewidth',1, 'DisplayName', 'stim1')
+if width(stest)>1; plot((1:height(stest))/fs,stest(:, 2),'linewidth',1, 'DisplayName', 'stim2');end 
+plot((1:height(rtest))/fs, smooth(rtest(:, 1), 21, 'sgolay', 4),'linewidth',1, 'DisplayName', 'resp')
+plot((1:height(pred))/fs, pred(:, 1)*5,'linewidth',2, 'Color', 'k', 'LineStyle', '--', 'DisplayName', 'resp-pred   '),
+hold off, xlim([0,25])% , axis square, grid on
+title('Reconstruction'), xlabel('Time (s)'), ylabel('Amplitude (a.u.)'), legend()
+
+savepath = [bml_bids_basefname(ch_summary.subject_id, SESSION, TASK, num2str(ch_summary.run_id)) '_elec-' ch{1} '_mTRF-stimch-' strjoin(stim_channel) '.png'];
+export_fig([PATH_FIG filesep 'mtrf' filesep savepath]); 
+pause(0.1); close(gcf); 
+
+
+[wmax, imax] = max(model.w, [], 2); 
+[wmin, imin] = min(model.w, [], 2); 
+ch_summary.wmax = wmax'; ch_summary.tmax = model.t(imax); 
+ch_summary.wmin = wmin'; ch_summary.tmin = model.t(imin); 
+
+assert(0, 'implement saving of the trf'); % implement 
+
+% % Plot GFP
+% subplot(2,2,4), mTRFplot(model,'gfp','all','all',[-50,350]);
+% title('Global Field Power')
+
+% Encoding permutation test: stat significance 
+ 
+nPerm = 100;  % number of permutations
+r_perm = zeros(nPerm, 1);  % to hold null correlations
+
+
+for iperm = 1:nPerm
+    % Circularly shift stimulus by a random amount to break temporal alignment
+    shift_amt = randi(size(stim_X, 1));
+    stim_perm = circshift(stim_X, shift_amt);
+
+    % Repartition permuted stimulus (same train/test split)
+    [strain_perm, ~, stest_perm, ~] = mTRFpartition(stim_perm, resp_X, nfold, testTrial);
+
+    % Train model on permuted stimulus
+    model_perm = mTRFtrain(strain_perm, rtrain, fs, Dir, tmin, tmax, lam, 'zeropad', 0);
+
+    % Test model on real response and permuted stimulus
+    [~, test_perm] = mTRFpredict(stest_perm, rtest, model_perm, 'zeropad', 0);
+    
+    % Store correlation
+    r_perm(iperm) = test_perm.r;
+end
+
+r_perm = r_perm.^2; 
+test.r = test.r.^2;
+% Compute empirical p-value
+p_empirical = mean(r_perm >= test.r);  % one-tailed test: how often null r >= real r
+ch_summary.p_empirical = p_empirical; 
+
+% Display result
+fprintf('Empirical p-value (one-tailed): %.4f\n', p_empirical);
+
+% Plot null distribution
+figure;
+histogram(r_perm, 20);
+hold on;
+xline(test.r, 'r', cfg.channel, 'LineWidth', 2);
+xlabel('Test Correlation (r)');
+ylabel('Permutation Count');
+title(sprintf('Permutation Test'));
+% legend; 
+
+savepath = [bml_bids_basefname(ch_summary.subject_id, SESSION, TASK, num2str(ch_summary.run_id)) '_elec-' ch{1} '_mTRF-stimch-' strjoin(stim_channel) '_perm.png'];
+export_fig([PATH_FIG filesep 'mtrf' filesep savepath]); 
+pause(0.1); close(gcf); 
+
+ch_summary.timestamp =  string(datetime('now'), 'yyyy-MM-dd-HH-mm-ss'); 
+nr = struct2table(ch_summary); % new row for the table
+if isempty(ch_summary_all)
+    ch_summary_all = nr; 
+else
+    ch_summary_all = [ch_summary_all; nr];
+    stamp = char(datetime('now'), 'yyyy-MM-dd-HH'); 
+    writetable(ch_summary_all, [PATH_FIG filesep 'mtrf' filesep 'A03_04_mtrf_stimch-' strjoin(stim_channel) '_all-channels-' stamp '.tsv'], 'FileType', 'text', 'Delimiter', '\t'); 
+end
+
+end 
+end
+
+
+%% Compare baseline periods of Lombards and quiet 
+
+freq_band = [10 30]; 
+
+SUBJECT = 'group-quiet-vs-quiet';
+
+cfg = []; 
+cfg.trials = epochs_all.noise_type==0;
+cfg.latency = TBASEL; 
+cfg.frequency = freq_band;
+cfg.avgoverfreq = 'yes';
+TF_all_quiet = ft_selectdata(cfg, TF_all);
+epochs_all_quiet = epochs_all(cfg.trials, :); 
+
+cfg = []; 
+cfg.trials = epochs_all.noise_type==1;
+cfg.latency = TBASEL; 
+cfg.frequency = freq_band;
+cfg.avgoverfreq = 'yes';
+TF_all_lombard = ft_selectdata(cfg, TF_all);
+epochs_all_lombard = epochs_all(cfg.trials, :); 
+
+% tmp.TF = TF_all_cond; 
+% tmp.epoch = epochs_all_cond; 
+% tmp.run_id = nan; % randsample(tmp.epoch.run_id, 1);
+% tmp.n_trials = height(tmp.epoch); 
+
+
+figure; hold on; 
+[cnts1, edges] = histcounts(TF_all_quiet.powspctrm(:)); 
+[cnts2, ~    ] = histcounts(TF_all_lombard.powspctrm(:), 'BinEdges', edges1); 
+bar([cnts1' cnts2']);
+
+%%
+% copyfields(cfg_plot, cfg_tmp)
+%
+function B = copyfields(A, B)
+% copy fields from struct A to struct B
+for fn = fieldnames(A)'
+   B.(fn{1}) = A.(fn{1});
+end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+

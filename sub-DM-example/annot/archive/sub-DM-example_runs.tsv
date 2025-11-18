@@ -1,0 +1,10 @@
+time_starts	time_ends	run	onset	duration	offset	task	audio	trellis	MER_side	MER_track	MER_depth	DBS_left	DBS_right	session	comment
+11:27:38	11:33:12	1	XXX.XX	XXX.XX	XXX.XX	lombard	n/a	n/a	n/a	n/a	n/a	n/a	n/a	"<intraop, preop>"	<my_comment>
+12:34:00	12:46:19	2	XXX.XX	XXX.XX	XXX.XX	lombard	ZOOM000X	datafile000X	L	"<MCP, LCP>"	X.X	n/a	n/a	"<intraop, preop>"	<my_comment>
+12:54:55	13:01:43	3	XXX.XX	XXX.XX	XXX.XX	lombard	ZOOM000X	datafile000X	L	"<MCP, LCP>"	#NAME?	n/a	n/a	"<intraop, preop>"	<my_comment>
+13:08:01	13:13:05	4	XXX.XX	XXX.XX	XXX.XX	lombard	ZOOM000X	datafile000X	L	"<MCP, LCP>"	n/a	n/a	n/a	"<intraop, preop>"	<my_comment>
+12:10:54	12:33:53	1	XXX.XX	XXX.XX	XXX.XX	sync	ZOOM000X	datafile000X	L	"<MCP, LCP>"	n/a	n/a	n/a	"<intraop, preop>"	<my_comment>
+12:49:09	12:54:48	2	XXX.XX	XXX.XX	XXX.XX	sync	ZOOM000X	datafile000X	L	"<MCP, LCP>"	n/a	n/a	n/a	"<intraop, preop>"	<my_comment>
+13:02:19	13:07:52	3	XXX.XX	XXX.XX	XXX.XX	sync	ZOOM000X	datafile000X	L	"<MCP, LCP>"	n/a	n/a	n/a	"<intraop, preop>"	<my_comment>
+13:13:22	13:25:38	4	XXX.XX	XXX.XX	XXX.XX	sync	n/a	datafile000X	n/a	n/a	n/a	n/a	n/a	"<intraop, preop>"	<my_comment>
+7:01:22	7:05:11	1	XXX.XX	XXX.XX	XXX.XX	lombard	n/a	n/a	n/a	n/a	n/a	n/a	n/a	"<intraop, preop>"	<my_comment>

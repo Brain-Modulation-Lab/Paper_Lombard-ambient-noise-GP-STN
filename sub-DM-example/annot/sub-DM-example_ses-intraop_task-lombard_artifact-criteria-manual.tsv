@@ -1,0 +1,2 @@
+run_id	trial_id	channel	status	personnel	method	comment
+"<eg, 2>"	"<eg, 22>"	"<eg, 'ecog_L101'>"	"<inspected, bad>"	"<eg, Latane Bullock>"	"<what method was used to determine artifact, eg bml_databrowser>"	"<optional but encouraged, description of why trial was rejected>"

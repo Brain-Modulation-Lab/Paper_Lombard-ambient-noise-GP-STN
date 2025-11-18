@@ -1,0 +1,7 @@
+criteria	channel_type	th_manual_low	th_manual_high	th_factor_std_low	th_factor_std_high	env_bin_size	env_mult_factor	th_fix_min	th_fix_max	th_consolidation	th_frac_coverage	th_conn_low	th_conn_high	wav_freq_min	wav_freq_max	n_wav_freqs	wav_width	comments
+A	ecog			1.5	3	1	1	5	8.5	3	0.2	4	8	na	na	na	9	"<eg, Andrew Meier 2024 02 27>"
+A	macro 			1.5	2.5	1	1	5	8.5	3	0.2	2	3	na	na	na	9	
+A	dbs			1.5	2.5	1	1	5	10	3	0.2	3	4	na	na	na	9	
+B	ecog			1.5	3	1	1	5	8.5	3	0.2	4	8					gamma bandpass
+B	macro 			1.5	2.5	1	1	5	8.5	3	0.2	2	3					gamma bandpass
+B	dbs			1.5	2.5	1	1	5	10	3	0.2	3	4					gamma bandpass

@@ -1,0 +1,4 @@
+onset	duration	offset	session	session_day	time_starts	time_ends
+GTC time	GTC time	GTC time	"example session names: training, preop, intraop, postop"	day relative to surgery (surgery=0)	24h clock time (HH:MM:SS)	24h clock time (HH:MM:SS)
+34911	5306		intraop	0	9:41:51	11:10:17
+25281	230		preop	0	7:01:21	7:05:11
